@@ -186,7 +186,15 @@ export async function createBrisa(options = {}) {
           const svg = await QRCode.toString(target, { type: 'svg', margin: 2, width: 220, errorCorrectionLevel: 'M', color: { dark: '#153e38', light: '#ffffff' } });
           response.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'no-store' }); return response.end(svg);
         }
-        if (pathname === '/api/files' && request.method === 'GET') return json(response, { files: storage.state.files.map(publicFile) });
+        if (pathname === '/api/files' && request.method === 'GET') {
+          const hidden = new Set(storage.state.historyHiddenIds || []);
+          return json(response, { files: storage.state.files.map(publicFile), history: storage.state.files.filter(file => !hidden.has(file.id)).map(publicFile) });
+        }
+        if (pathname === '/api/history' && request.method === 'DELETE') {
+          storage.state.historyHiddenIds = storage.state.files.map(file => file.id);
+          storage.save();
+          return json(response, { ok: true });
+        }
         if (pathname === '/api/storage/reveal' && request.method === 'POST') {
           if (!actor.admin) throw error('Solo puedes hacer esto desde Windows.', 403);
           const input = await body(request);
@@ -279,7 +287,7 @@ export async function createBrisa(options = {}) {
       }
       if (!['GET', 'HEAD'].includes(request.method)) throw error('Método no permitido.', 405);
       const asset = pathname === '/' ? 'index.html' : pathname === '/setup' ? 'setup.html' : pathname.slice(1);
-      const allowed = new Set(['index.html', 'setup.html', 'app.js', 'activity.js', 'setup.js', 'styles.css', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'sw.js']);
+      const allowed = new Set(['index.html', 'setup.html', 'app.js', 'activity.js', 'downloads.js', 'setup.js', 'styles.css', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'sw.js']);
       if (!allowed.has(asset)) throw error('No encontramos esa página.', 404);
       if (!request.socket.encrypted && !actor?.admin && asset === 'index.html') {
         response.writeHead(302, { Location: '/setup' }); return response.end();

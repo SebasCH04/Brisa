@@ -1,4 +1,5 @@
 import { ActivityUI, appConfirm } from './activity.js';
+import { DownloadsUI, isIOS } from './downloads.js';
 const $ = selector => document.querySelector(selector);
 const make = (tag, className, text) => {
   const element = document.createElement(tag);
@@ -24,6 +25,7 @@ let fileSignature = '';
 let deviceSignature = '';
 let wakeLock;
 let allFiles = [];
+let historyFiles = [];
 const bytes = amount => {
   if (!amount) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -44,6 +46,7 @@ async function api(url, options = {}) {
   if (!response.ok) throw Object.assign(new Error(result.error || 'No pudimos completar la operación.'), { status: response.status });
   return result;
 }
+const downloadsUI = new DownloadsUI({ headers: authHeaders, bytes });
 const activityUI = new ActivityUI({ api, toast, make,
   changed: () => { renderFiles(allFiles); renderTasks(); },
   reset: () => { tasks = tasks.filter(task => !['complete', 'cancelled'].includes(task.status)); renderTasks(); }
@@ -137,16 +140,18 @@ function updateQr() {
 }
 function renderFiles(files) {
   allFiles = files;
-  const signature = JSON.stringify([files, activityUI.session?.id, activityUI.session?.files]);
+  const signature = JSON.stringify([files, historyFiles, activityUI.session?.id, activityUI.session?.files]);
   if (signature === fileSignature) return;
   fileSignature = signature;
   const sessionFiles = files.filter(file => activityUI.belongs(file));
   $('#emptyState').hidden = sessionFiles.length > 0;
-  $('#historyEmpty').hidden = files.length > 0;
-  $('#historyCount').textContent = String(files.length);
+  $('#historyEmpty').hidden = historyFiles.length > 0;
+  $('#historyCount').textContent = String(historyFiles.length);
+  $('#clearHistory').disabled = historyFiles.length === 0;
   $('#sessionCount').textContent = String(sessionFiles.length);
   renderFileList($('#fileList'), sessionFiles);
-  renderFileList($('#historyList'), files);
+  renderFileList($('#historyList'), historyFiles);
+  downloadsUI.render(downloadsUI.job);
 }
 function renderFileList(list, files) {
   list.replaceChildren();
@@ -159,9 +164,13 @@ function renderFileList(list, files) {
     const meta = make('p', 'file-meta', `${bytes(file.size)} · ${file.source === 'windows' ? 'Desde Windows' : 'Recibido en Windows'} · ${date}`);
     meta.title = `SHA-256: ${file.sha256}`;
     info.append(name, meta); row.append(info);
-    const download = make('a', 'download-link', 'Descargar ↓');
-    download.href = `/api/files/${file.id}/download`; download.download = file.name;
-    download.addEventListener('click', () => toast('Tu navegador gestionará la descarga del archivo.'));
+    const download = make(isIOS() ? 'button' : 'a', 'download-link', 'Descargar ↓');
+    if (isIOS()) {
+      download.type = 'button';
+      downloadsUI.attach(download, info, file);
+    } else {
+      download.href = `/api/files/${file.id}/download`; download.download = file.name;
+    }
     const actions = make('div', 'file-actions');
     actions.append(download);
     if (state.admin) {
@@ -185,7 +194,9 @@ async function refresh() {
     $('#offlineBanner').hidden = true;
     configure(info);
     if (info.authenticated) {
-      renderFiles((await api('/api/files')).files);
+      const library = await api('/api/files');
+      historyFiles = library.history || library.files;
+      renderFiles(library.files);
       activityUI.ingest(await api(activityUI.query()));
       if (!initialized) {
         initialized = true;
@@ -406,6 +417,12 @@ async function resumeFromSelection(file) {
 }
 document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
 $('#chooseFiles').addEventListener('click', () => $('#fileInput').click());
+$('#clearHistory').addEventListener('click', async () => {
+  if (!await appConfirm({ title: '¿Borrar el historial?', message: 'Se limpiará el historial de Brisa en tus dispositivos. Tus archivos y los de esta sesión se conservarán.', accept: 'Borrar historial' })) return;
+  const button = $('#clearHistory'); button.disabled = true;
+  try { await api('/api/history', { method: 'DELETE' }); await refresh(); }
+  catch (error) { toast(error.message, true); button.disabled = false; }
+});
 $('#fileInput').addEventListener('change', event => { addFiles([...event.target.files]); event.target.value = ''; });
 $('#resumeInput').addEventListener('change', event => { resumeFromSelection(event.target.files[0]); event.target.value = ''; });
 $('#pairForm').addEventListener('submit', requestPair);

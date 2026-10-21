@@ -1,5 +1,24 @@
 # Cambios de Brisa
 
+## 0.2.3
+
+- Se silencian los avisos de entrega asociados a descargas; se conservan los de envío y recepción.
+- El guardado del iPhone usa la hoja de iOS sin ventana intermedia de Brisa. El progreso, errores y segundo toque cuando iOS lo exige aparecen en la fila del archivo.
+- «Borrar historial» limpia los registros visibles en todos los dispositivos con confirmación de Brisa, sin eliminar archivos ni vaciar la sesión actual. Las transferencias nuevas vuelven a aparecer.
+
+## 0.2.2
+
+- Se reemplaza la navegación de descarga del iPhone por recepción dentro de Brisa y un botón «Guardar en Archivos» que invoca la hoja de iOS con el archivo real.
+- El cuadro permite cancelar la recepción, reintentar errores y volver a Brisa. Cancelar la hoja de iOS conserva el archivo preparado para reintentar sin otra descarga.
+- Se recibe en almacenamiento temporal privado cuando está disponible, con respaldo limitado en memoria y limpieza al cerrar. Los errores de red, espacio y compatibilidad permanecen dentro de Brisa.
+- Se retira la confirmación nativa del navegador y se actualiza la caché de la interfaz.
+
+## 0.2.1
+
+- Se retiran la campana y su ventana de notificaciones; se conservan los avisos breves, el progreso, Esta sesión e Historial.
+- Solo la descarga en iPhone utiliza una confirmación nativa y un enlace separado sin el atributo `download`, para evitar que la vista del archivo sustituya a Brisa.
+- Las demás confirmaciones siguen usando los cuadros de Brisa.
+
 ## 0.2.0
 
 - Se centra la «×» de los cuadros con un icono SVG y un botón consistente.

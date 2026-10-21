@@ -141,6 +141,31 @@ test('configuración pública, QR local y certificados privados inaccesibles', a
   assert.equal((await request(f.app, '/api/qr?url=https%3A%2F%2Fevil.example')).status, 400);
 });
 
+test('borrar historial conserva archivos, se comparte y persiste al reiniciar', async t => {
+  const f = await fixture(t); const device = await pair(f.app);
+  const first = (await request(f.app, '/api/uploads', { method: 'POST', data: { name: 'antes.zip', size: 0 } })).json;
+  await request(f.app, `/api/uploads/${first.id}/complete`, { method: 'POST' });
+  assert.equal((await request(f.app, '/api/files')).json.history.length, 1);
+  assert.equal((await request(f.app, '/api/history', { method: 'DELETE', secure: true })).status, 401);
+  assert.equal((await request(f.app, '/api/history', { method: 'DELETE', secure: true, token: device.token })).status, 200);
+  for (const options of [{}, { secure: true, token: device.token }]) {
+    const list = (await request(f.app, '/api/files', options)).json;
+    assert.equal(list.history.length, 0); assert.equal(list.files.length, 1);
+    assert.equal((await request(f.app, `/api/files/${first.id}/download`, options)).status, 200);
+  }
+  assert.equal((await fs.stat(f.app.transfers.file(first.id))).size, 0);
+  await f.restart();
+  assert.equal((await request(f.app, '/api/files')).json.history.length, 0);
+  assert.equal((await request(f.app, '/api/files')).json.files.length, 1);
+  const next = (await request(f.app, '/api/uploads', { method: 'POST', data: { name: 'despues.zip', size: 0 } })).json;
+  await request(f.app, `/api/uploads/${next.id}/complete`, { method: 'POST' });
+  const list = (await request(f.app, '/api/files')).json;
+  assert.equal(list.files.length, 2); assert.deepEqual(list.history.map(file => file.id), [next.id]);
+  await request(f.app, '/api/history', { method: 'DELETE' });
+  assert.equal((await request(f.app, '/api/files')).json.history.length, 0);
+  assert.equal(f.app.storage.state.files.length, 2);
+});
+
 test('abrir carpetas usa solo destinos de Brisa y devuelve un error visible si Windows falla', async t => {
   const opened = []; let failOpen = false;
   const f = await fixture(t, { openFolder: async folder => { if (failOpen) throw new Error('No interactive shell'); opened.push(folder); } });
