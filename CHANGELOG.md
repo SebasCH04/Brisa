@@ -1,5 +1,14 @@
 # Cambios de Brisa
 
+## 1.0.0
+
+- Instalador y ejecutable portátil de Windows, sin instalar Node.js, con ventana propia y bandeja del sistema.
+- Datos persistentes fuera de la instalación y migración desde `.brisa`, conservando archivos, certificados y vinculaciones.
+- Apertura de carpetas mediante Windows, descargas con selector de destino y cierre controlado del servidor.
+- Compilación x64/ARM64, hashes SHA-256, prueba del paquete y flujo de GitHub Actions.
+- README abreviado y guía de producción con instalación del iPhone, respaldos, límites y publicación.
+- Se conserva el guardado del iPhone mediante la hoja nativa de iOS, sin diálogo intermedio ni avisos por descargar.
+
 ## 0.2.3
 
 - Se silencian los avisos de entrega asociados a descargas; se conservan los de envío y recepción.

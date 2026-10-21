@@ -4,3 +4,8 @@ node_modules/
 test-results/
 playwright-report/
 *.log
+
+# Distribution and generated assets
+dist/
+build/icon.ico
+source-baseline.json

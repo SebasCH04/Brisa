@@ -1,0 +1,32 @@
+appId: com.sebasch04.brisa
+productName: Brisa
+asar: true
+npmRebuild: false
+forceCodeSigning: false
+publish: null
+directories:
+  output: dist
+  buildResources: build
+files:
+  - desktop/**/*
+  - server.mjs
+  - lib/**/*
+  - public/**/*
+  - package.json
+  - LICENSE
+win:
+  icon: build/icon.ico
+  target:
+    - nsis
+    - portable
+nsis:
+  artifactName: Brisa-Setup-${version}-${arch}.${ext}
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  deleteAppDataOnUninstall: false
+portable:
+  artifactName: Brisa-Portable-${version}-${arch}.${ext}

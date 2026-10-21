@@ -1,6 +1,6 @@
 {
   "name": "brisa",
-  "version": "0.2.3",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Transferencias locales entre Windows y iPhone, sin nube.",
@@ -12,7 +12,13 @@
     "dev": "node server.mjs",
     "stop": "node scripts/stop.mjs",
     "test": "node --test --test-concurrency=1",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "desktop": "electron .",
+    "build:icon": "node scripts/build-icon.mjs",
+    "dist:win": "npm run build:icon && electron-builder --win --x64 --publish never && node scripts/checksums.mjs",
+    "dist:win:arm64": "npm run build:icon && electron-builder --win --arm64 --publish never && node scripts/checksums.mjs",
+    "test:package": "node scripts/verify-package.mjs",
+    "migrate": "node scripts/migrate.mjs"
   },
   "dependencies": {
     "@peculiar/x509": "^2.2.0",
@@ -22,6 +28,15 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
-    "@resvg/resvg-js": "^2.6.2"
+    "@resvg/resvg-js": "^2.6.2",
+    "electron": "45.0.0",
+    "electron-builder": "26.15.3"
+  },
+  "main": "desktop/main.mjs",
+  "author": "Sebastián Calvo Hernández",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SebasCH04/Brisa.git"
   }
 }

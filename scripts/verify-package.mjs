@@ -1,0 +1,21 @@
+import { spawn } from 'node:child_process';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+const executable = path.resolve(process.argv[2] || 'dist/win-unpacked/Brisa.exe');
+const report = path.resolve('dist', `smoke-${path.basename(executable, '.exe')}.json`);
+await fs.mkdir(path.dirname(report), { recursive: true });
+await fs.rm(report, { force: true });
+const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
+await new Promise((resolve, reject) => {
+  const child = spawn(executable, ['--self-test', `--self-test-report=${report}`], { env, windowsHide: true, stdio: 'ignore' });
+  const timeout = setTimeout(() => { child.kill(); reject(new Error('El ejecutable no completó la prueba en 90 segundos.')); }, 90000);
+  child.on('error', error => { clearTimeout(timeout); reject(error); });
+  child.on('exit', code => { clearTimeout(timeout); code === 0 ? resolve() : reject(new Error(`El ejecutable terminó con código ${code}. Consulta ${report}`)); });
+});
+const result = JSON.parse(await fs.readFile(report, 'utf8'));
+if (!result.ok || !result.packaged) throw new Error(`Prueba incompleta: ${report}`);
+console.log(JSON.stringify(result, null, 2));
+const temporary = path.resolve(result.temporaryDirectory);
+if (path.dirname(temporary) !== path.resolve(os.tmpdir()) || !path.basename(temporary).startsWith('brisa-desktop-test-')) throw new Error('Ruta temporal no válida.');
+await fs.rm(temporary, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });

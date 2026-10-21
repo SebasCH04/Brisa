@@ -281,7 +281,7 @@ export async function createBrisa(options = {}) {
         }
         if (pathname === '/api/shutdown' && request.method === 'POST') {
           if (!actor.admin) throw error('Solo puedes hacer esto desde Windows.', 403);
-          json(response, { ok: true }); setTimeout(() => close(), 100).unref(); return;
+          json(response, { ok: true }); setTimeout(() => options.onShutdown ? options.onShutdown() : close(), 100).unref(); return;
         }
         throw error('No encontramos esa operación.', 404);
       }
@@ -342,7 +342,12 @@ export async function createBrisa(options = {}) {
     if (stopping) return; stopping = true;
     activity.close();
     if (discovery) { discovery.unpublishAll(); discovery.destroy(); }
-    await Promise.all([localServer, secureServer].map(server => new Promise(resolve => { server.close(resolve); server.closeIdleConnections(); })));
+    await Promise.all([localServer, secureServer].map(server => new Promise(resolve => {
+      const timeout = setTimeout(() => server.closeAllConnections(), 5000);
+      timeout.unref();
+      server.close(() => { clearTimeout(timeout); resolve(); });
+      server.closeIdleConnections();
+    })));
   }
   return { info, storage, transfers, activity, ca: tls.ca, close, localServer, secureServer };
 }
