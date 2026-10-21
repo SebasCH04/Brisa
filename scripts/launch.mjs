@@ -4,12 +4,22 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const address = 'http://127.0.0.1:3210';
+const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
 async function ready() {
+  let response;
   try {
-    const response = await fetch(`${address}/api/health`, { signal: AbortSignal.timeout(1000) });
-    if (!response.ok) return false;
-    return (await response.json()).app === 'brisa';
+    response = await fetch(`${address}/api/health`, { signal: AbortSignal.timeout(1000) });
   } catch { return false; }
+  if (!response.ok) throw new Error('El puerto 3210 está ocupado por otra aplicación.');
+  const health = await response.json();
+  if (health.app !== 'brisa') throw new Error('El puerto 3210 está ocupado por otra aplicación.');
+  const info = await fetch(`${address}/api/bootstrap`, { headers: { 'X-Brisa-Client': '1' }, signal: AbortSignal.timeout(2000) }).then(result => result.json());
+  const runningRoot = info.projectPath || (info.storagePath && path.resolve(info.storagePath, '..', '..'));
+  if (!runningRoot || path.resolve(runningRoot).toLowerCase() !== root.toLowerCase()) {
+    throw new Error('Brisa sigue abierta desde otra carpeta. Abre Detener-Brisa.cmd y luego vuelve a iniciar desde este repositorio.');
+  }
+  if (health.version !== version) throw new Error('Hay una versión anterior de Brisa abierta. Abre Detener-Brisa.cmd y luego Iniciar-Brisa.cmd para aplicar la actualización.');
+  return true;
 }
 try {
   if (!await ready()) {

@@ -5,3 +5,55 @@
 @media(max-width:700px){.shell{display:block}.sidebar{position:static;height:auto;padding:17px 20px 0;border-right:0;border-bottom:1px solid var(--line);display:block;background:#f1f4ec}.brand{font-size:29px;gap:9px}.brand img{width:34px;height:34px;border-radius:10px}.workspace-label,.sidebar-note,.sidebar-bottom{display:none}nav{display:flex;gap:22px;margin-top:20px}.nav-item{border-radius:0;padding:10px 0 14px;background:none!important;border-bottom:2px solid transparent;font-size:12px;gap:7px}.nav-item.active{border-bottom-color:var(--green)}.nav-icon{font-size:17px}.nav-count{margin-left:3px;font-size:9px;min-width:16px}.topbar{height:50px;padding:0 22px;border:0}.breadcrumb{font-size:9px}.breadcrumb span{margin:0 7px}.connection-pill{font-size:9px;padding:6px 9px;white-space:nowrap}.connection-pill .status-dot{width:5px;height:5px}#appContent{padding:22px 21px 0}.eyebrow{font-size:8px;letter-spacing:1.7px;margin-bottom:12px}h1{font-size:33px;letter-spacing:-1.5px}.page-heading{display:block;margin-bottom:0}.intro{font-size:12px;line-height:1.7;margin-top:12px}.page-heading .secondary{margin-top:17px}.device-bridge{padding:29px 5px 30px}.device-orb{width:92px}.device-orb svg{width:61px;height:61px;padding:16px;box-shadow:0 0 0 5px #f1f4ec}.phone-orb svg{box-shadow:0 0 0 5px #f5f4ec}.device-orb span{font-size:10px;max-width:92px}.bridge-line{margin-top:30px;width:110px}.bridge-line small{font-size:8px;top:15px}.dropzone{padding:25px 15px 20px}.dropzone h2{font-size:18px}.dropzone>p{font-size:11px;max-width:235px;margin:9px auto 19px}.drop-footer{gap:14px;font-size:8px;margin-top:23px}.dropzone .primary{min-width:170px}.upload-icon{width:45px;height:45px;margin-bottom:16px}.files-section,.activity-section{margin-top:28px}.section-heading h2{font-size:16px}.section-description{font-size:10px;line-height:1.7}.file-row,.upload-row{padding:12px 11px;gap:9px}.file-name{font-size:11px}.file-meta{font-size:9px}.file-type{width:33px;height:37px;font-size:8px}.download-link{padding:9px;font-size:10px}.page-footer{font-size:8px;margin-top:28px;padding:22px 0;display:block}.page-footer>span{display:block}.page-footer>span+span{margin-top:9px}.empty-state{padding:23px 15px}.pairing-screen{margin:28px auto}.pairing-screen h1{font-size:34px}.notice{font-size:11px;padding:14px}.device-list{grid-template-columns:1fr}.install-tip{margin-bottom:30px}.install-tip p{font-size:11px}#offlineBanner{margin:6px 21px 0}.setup-body{padding:25px 22px}.setup-card .brand{margin-bottom:35px}.setup-card h1{font-size:39px}.setup-steps>li{padding-left:31px}.setup-steps strong{font-size:14px}.setup-steps p{font-size:12px}.upload-status{font-size:9px}.upload-detail{font-size:9px}.task-actions{gap:9px}.task-actions button{font-size:9px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 .file-toolbar{display:flex;gap:18px;align-items:center}
+
+/* Keep file names, transfer status, and iPhone safe areas inside the viewport. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+.shell{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);min-height:100svh}
+main,#appContent,section,.file-list,.upload-list,.file-info{min-width:0}
+main{padding-bottom:env(safe-area-inset-bottom,0px)}
+.file-row{display:grid;grid-template-columns:38px minmax(0,1fr) auto}
+.file-name{min-width:0}
+.file-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;min-width:0}
+.download-link,.folder-link{display:inline-flex;align-items:center;justify-content:center;min-height:40px}
+.folder-link{border:1px solid #dfe7d7;background:#fafcf6;color:#657d56;border-radius:7px;padding:9px 12px;font-size:11px;white-space:nowrap}
+.folder-link:hover{background:#eaf0e4}
+.upload-top{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start}
+.upload-detail>span{min-width:0;overflow-wrap:anywhere}
+.task-actions{flex-shrink:0;flex-wrap:wrap}
+.file-meta{overflow-wrap:anywhere}
+.qr-frame{width:min(240px,100%);height:auto;aspect-ratio:1}
+.toast{width:max-content;max-width:min(520px,calc(100% - 32px));overflow-wrap:anywhere}
+
+@media(max-width:850px) and (min-width:701px){
+  .file-row{grid-template-columns:38px minmax(0,1fr)}
+  .file-actions{grid-column:2;justify-content:flex-start}
+}
+@media(max-width:700px){
+  .topbar{height:auto;min-height:50px;flex-wrap:wrap;padding-top:10px;padding-bottom:10px;gap:8px 12px}
+  .connection-pill{max-width:100%;white-space:normal;line-height:1.5}
+  .connection-pill span:last-child{min-width:0;overflow-wrap:anywhere}
+  .file-row{grid-template-columns:33px minmax(0,1fr);align-items:start;gap:10px}
+  .file-actions{grid-column:2;justify-content:flex-start}
+  .file-name{white-space:normal;overflow-wrap:anywhere;line-height:1.55}
+  .file-meta{line-height:1.7}
+  .upload-top{grid-template-columns:minmax(0,1fr);gap:5px}
+  .upload-status{white-space:normal;overflow-wrap:anywhere;line-height:1.6}
+  .upload-detail{flex-direction:column;align-items:stretch;gap:7px;line-height:1.7}
+  .task-actions{justify-content:flex-start;gap:8px 18px}
+  .task-actions button{min-height:34px;padding:5px 0;font-size:11px}
+  .download-link,.folder-link{min-height:42px;padding:10px 14px;font-size:11px}
+  .section-heading{flex-wrap:wrap;align-items:flex-start;gap:8px 12px}
+  .file-toolbar{flex-wrap:wrap;gap:14px}
+  .drop-footer{flex-wrap:wrap;gap:8px 14px;line-height:1.6}
+  .dropzone .primary{min-width:0;max-width:100%}
+  input:not([type=file]),select{font-size:16px}
+}
+@media(max-width:350px){
+  #appContent{padding-left:16px;padding-right:16px}
+  h1{font-size:29px}
+  .device-bridge{padding-left:0;padding-right:0}
+  .device-orb{width:82px}
+  .device-orb span{max-width:82px}
+  .bridge-line{width:88px;flex-shrink:1}
+  .bridge-line small{white-space:normal;text-align:center;width:100%;line-height:1.5}
+}

@@ -6,9 +6,21 @@ import crypto from 'node:crypto';
 import { createBrisa } from '../server.mjs';
 
 let app, dataDir;
+const openedFolders = [];
+async function expectInsideViewport(page) {
+  const overflow = await page.evaluate(() => {
+    const selectors = '.file-row,.file-info,.file-name,.file-meta,.file-actions,.upload-row,.upload-top,.upload-status,.upload-detail,.task-actions,.toast';
+    return [...document.querySelectorAll(selectors)].filter(element => {
+      const box = element.getBoundingClientRect();
+      return box.width && box.height && (box.left < -1 || box.right > innerWidth + 1);
+    }).map(element => ({ className: element.className, text: element.textContent.slice(0, 100) }));
+  });
+  expect(overflow).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+}
 test.beforeAll(async () => {
   dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'brisa-ui-'));
-  app = await createBrisa({ dataDir, httpPort: 0, httpsPort: 0, bind: '127.0.0.1', discovery: false, addresses: ['127.0.0.1'] });
+  app = await createBrisa({ dataDir, httpPort: 0, httpsPort: 0, bind: '127.0.0.1', discovery: false, addresses: ['127.0.0.1'], openFolder: async folder => { openedFolders.push(folder); } });
 });
 test.afterAll(async () => {
   await app?.close();
@@ -53,31 +65,55 @@ test('vincular, enviar en ambos sentidos, descargar y recuperar la identidad', a
   const downloadedPath = path.join(dataDir, 'downloaded.zip'); await download.saveAs(downloadedPath);
   expect(await fs.readFile(downloadedPath)).toEqual(fromPc);
   const fromPhone = crypto.randomBytes(9 * 1024 * 1024 + 201);
+  const phoneName = `Respaldo_del_iPhone_${'fotos-y-videos-'.repeat(10)}2026.zip`;
   await phone.route('**/api/uploads/*/chunk?offset=*', async route => {
     await new Promise(resolve => setTimeout(resolve, 400));
     await route.continue().catch(() => {});
   });
   const firstBlock = phone.waitForResponse(response => response.url().includes('/chunk?offset=0') && response.status() === 200);
-  await phone.locator('#fileInput').setInputFiles({ name: 'Desde iPhone.zip', mimeType: 'application/zip', buffer: fromPhone });
+  await phone.locator('#fileInput').setInputFiles({ name: phoneName, mimeType: 'application/zip', buffer: fromPhone });
   await firstBlock;
   await phone.getByRole('button', { name: 'Pausar', exact: true }).click();
   await expect(phone.locator('.upload-status')).toHaveText('En pausa');
+  for (const width of [320, 375, 393, 430]) {
+    await phone.setViewportSize({ width, height: 852 });
+    await expectInsideViewport(phone);
+  }
+  await phone.setViewportSize({ width: 393, height: 852 });
   await phone.reload();
   await expect(phone.getByRole('button', { name: 'Elegir original', exact: true })).toBeVisible();
   const wrongOriginal = Buffer.from(fromPhone); wrongOriginal[0] ^= 255;
   await phone.getByRole('button', { name: 'Elegir original', exact: true }).click();
-  await phone.locator('#resumeInput').setInputFiles({ name: 'Desde iPhone.zip', mimeType: 'application/zip', buffer: wrongOriginal });
+  await phone.locator('#resumeInput').setInputFiles({ name: phoneName, mimeType: 'application/zip', buffer: wrongOriginal });
   await expect(phone.locator('#toast')).toContainText('no coincide');
+  await expectInsideViewport(phone);
   await phone.getByRole('button', { name: 'Elegir original', exact: true }).click();
-  await phone.locator('#resumeInput').setInputFiles({ name: 'Desde iPhone.zip', mimeType: 'application/zip', buffer: fromPhone });
-  await expect(phone.locator('#fileList .file-row').filter({ hasText: 'Desde iPhone.zip' })).toBeVisible({ timeout: 30000 });
-  await expect(desktop.locator('#fileList .file-row').filter({ hasText: 'Desde iPhone.zip' })).toBeVisible({ timeout: 15000 });
-  const received = app.storage.state.files.find(file => file.name === 'Desde iPhone.zip');
+  await phone.locator('#resumeInput').setInputFiles({ name: phoneName, mimeType: 'application/zip', buffer: fromPhone });
+  await expect(phone.locator('#fileList .file-row').filter({ hasText: phoneName })).toBeVisible({ timeout: 30000 });
+  const desktopRow = desktop.locator('#fileList .file-row').filter({ hasText: phoneName });
+  await expect(desktopRow).toBeVisible({ timeout: 15000 });
+  const received = app.storage.state.files.find(file => file.name === phoneName);
   expect(await fs.readFile(app.transfers.file(received.id))).toEqual(fromPhone);
+  const desktopDownloadEvent = desktop.waitForEvent('download');
+  await desktopRow.getByRole('link', { name: 'Descargar' }).click();
+  const desktopDownload = await desktopDownloadEvent;
+  const desktopPath = path.join(dataDir, 'downloaded-from-iphone.zip');
+  await desktopDownload.saveAs(desktopPath);
+  expect(await fs.readFile(desktopPath)).toEqual(fromPhone);
+  await desktopRow.getByRole('button', { name: /Abrir carpeta/ }).click();
+  await expect(desktop.locator('#toast')).toContainText('Carpeta abierta');
+  expect(openedFolders.at(-1)).toBe(path.dirname(app.transfers.file(received.id)));
+  await desktop.locator('#openFolder').click();
+  await expect(desktop.locator('#openFolder')).toHaveText('Abrir carpeta');
+  expect(openedFolders.at(-1)).toBe(path.join(dataDir, 'files'));
   await phone.reload();
   await expect(phone.locator('#appContent')).toBeVisible();
   await expect(phone.locator('#pairingScreen')).toBeHidden();
-  expect(await phone.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  for (const width of [320, 375, 393, 430]) {
+    await phone.setViewportSize({ width, height: 852 });
+    await expectInsideViewport(phone);
+  }
+  await phone.setViewportSize({ width: 393, height: 852 });
   await fs.mkdir('artifacts', { recursive: true });
   await desktop.screenshot({ path: 'artifacts/brisa-windows.png', fullPage: true });
   await phone.screenshot({ path: 'artifacts/brisa-iphone.png', fullPage: true });

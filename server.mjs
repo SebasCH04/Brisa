@@ -5,15 +5,16 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
-import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import QRCode from 'qrcode';
 import { Bonjour } from 'bonjour-service';
 import { openStorage, tokenHash } from './lib/storage.mjs';
 import { certificates } from './lib/tls.mjs';
 import { Transfers, CHUNK_SIZE } from './lib/transfers.mjs';
+import { openWindowsFolder } from './lib/windows-shell.mjs';
 
 export const ROOT = path.dirname(fileURLToPath(import.meta.url));
+const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 const PUBLIC = path.join(ROOT, 'public');
 const error = (message, status = 400) => Object.assign(new Error(message), { status });
 const isLocal = request => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(request.socket.remoteAddress);
@@ -92,7 +93,7 @@ export async function createBrisa(options = {}) {
       const actor = authenticate(request, url);
       if (actor) presence.set(actor.id, Date.now());
       if (actor && !actor.admin) cookie(response, actor.token);
-      if (pathname === '/api/health' && request.method === 'GET') return json(response, { app: 'brisa', version: '0.1.0' });
+      if (pathname === '/api/health' && request.method === 'GET') return json(response, { app: 'brisa', version: VERSION });
       if (pathname === '/brisa-root.crt' && request.method === 'GET') {
         response.writeHead(200, { 'Content-Type': 'application/x-x509-ca-cert', 'Content-Disposition': 'attachment; filename="Brisa-CA-local.crt"', 'Cache-Control': 'no-store' });
         return response.end(tls.ca);
@@ -107,14 +108,14 @@ export async function createBrisa(options = {}) {
         if (!request.socket.encrypted && !actor?.admin) throw error('Abre la conexión HTTPS de Brisa.', 403);
         cleanPending();
         if (pathname === '/api/bootstrap' && request.method === 'GET') {
-          const result = { name: info.name, version: '0.1.0', chunkSize: CHUNK_SIZE, authenticated: Boolean(actor), admin: Boolean(actor?.admin), device: actor ? { id: actor.id, name: actor.name } : null };
+          const result = { name: info.name, version: VERSION, chunkSize: CHUNK_SIZE, authenticated: Boolean(actor), admin: Boolean(actor?.admin), device: actor ? { id: actor.id, name: actor.name } : null };
           if (actor?.admin) Object.assign(result, {
             ...info, desktopUrl: `http://127.0.0.1:${info.httpPort}`,
             setupUrls: [hostname, ...addresses].map(host => `http://${host}:${info.httpPort}/setup`),
             appUrl: `https://${hostname}:${info.httpsPort}`,
             devices: storage.state.devices.map(({ tokenHash: ignored, ...device }) => ({ ...device, online: Date.now() - (presence.get(device.id) || 0) < 20000 })),
             pending: [...pending.values()].map(({ tokenHash: ignored, ...item }) => item),
-            storagePath: path.join(dataDir, 'files')
+            storagePath: path.join(dataDir, 'files'), projectPath: ROOT
           });
           return json(response, result);
         }
@@ -178,11 +179,14 @@ export async function createBrisa(options = {}) {
           const input = await body(request);
           const file = input.id ? storage.state.files.find(item => item.id === input.id) : null;
           if (input.id && !file) throw error('No encontramos ese archivo.', 404);
-          if (process.platform !== 'win32') throw error('Abrir la carpeta está disponible en Windows.', 501);
-          const args = file ? [`/select,${transfers.file(file.id)}`] : [path.join(dataDir, 'files')];
-          const child = spawn('explorer.exe', args, { windowsHide: true, detached: true, stdio: 'ignore' });
-          await new Promise((resolve, reject) => { child.once('spawn', resolve); child.once('error', reject); });
-          child.unref(); return json(response, { ok: true });
+          const folder = file ? path.dirname(transfers.file(file.id)) : path.join(dataDir, 'files');
+          if (!(await fsp.stat(folder)).isDirectory()) throw error('La carpeta ya no está disponible.', 404);
+          try { await (options.openFolder || openWindowsFolder)(folder); }
+          catch (caught) {
+            console.warn('[Brisa] No se pudo abrir la carpeta:', caught.message);
+            throw error('Windows no pudo abrir la carpeta. Puedes guardar el archivo con Descargar.', 502);
+          }
+          return json(response, { ok: true });
         }
         if (pathname === '/api/uploads' && request.method === 'GET') return json(response, { uploads: [...transfers.uploads.values()].filter(item => item.owner === actor.id).map(({ owner, ...item }) => item) });
         if (pathname === '/api/uploads' && request.method === 'POST') return json(response, transfers.create(await body(request), actor.id), 201);

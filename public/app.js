@@ -63,10 +63,10 @@ function configure(info) {
   if (!info.authenticated) return;
   $('#phoneLabel').textContent = info.admin ? (info.devices?.find(device => device.online)?.name || info.devices?.[0]?.name || 'Tu iPhone') : info.device.name;
   $('#bridgeText').textContent = info.admin && !info.devices?.length ? 'El primer vínculo' : 'Todo queda en tu red';
-  $('#dropTitle').textContent = info.admin ? 'Un archivo. Un pequeño viaje.' : 'De tu iPhone a Windows.';
-  $('#dropHint').textContent = info.admin ? 'Arrastra tus archivos aquí o selecciónalos para empezar.' : 'Selecciona fotos, videos o documentos para enviarlos.';
-  $('#chooseFiles').firstChild.textContent = info.admin ? 'Elegir archivos ' : 'Enviar archivos ';
-  $('#filesDescription').textContent = info.admin ? 'Disponibles para tus dispositivos vinculados. Los recibidos también se guardan en esta computadora.' : 'Descarga aquí los archivos disponibles en tu computadora.';
+  $('#dropTitle').textContent = info.admin ? 'De Windows a tu iPhone.' : 'De tu iPhone a Windows.';
+  $('#dropHint').textContent = info.admin ? 'Arrastra o selecciona archivos. Después podrás descargarlos desde Brisa en tu iPhone.' : 'Selecciona fotos, videos o documentos. Se guardarán en tu computadora.';
+  $('#chooseFiles').firstChild.textContent = info.admin ? 'Enviar al iPhone ' : 'Enviar a Windows ';
+  $('#filesDescription').textContent = info.admin ? 'Descarga una copia o abre la carpeta de los archivos recibidos. También están disponibles en tu iPhone.' : 'Descarga los archivos enviados desde Windows o consulta lo que ya enviaste a tu computadora.';
   $('#deviceCount').textContent = String(info.admin ? info.devices.length : 1);
   renderDevices();
   if (info.admin) {
@@ -144,11 +144,15 @@ function renderFiles(files) {
     info.append(name, meta); row.append(info);
     const download = make('a', 'download-link', 'Descargar ↓');
     download.href = `/api/files/${file.id}/download`; download.download = file.name;
+    download.addEventListener('click', () => toast('Tu navegador gestionará la descarga del archivo.'));
+    const actions = make('div', 'file-actions');
+    actions.append(download);
     if (state.admin) {
-      const reveal = make('button', 'download-link', 'Mostrar ↗');
-      reveal.addEventListener('click', () => revealFolder(file.id));
-      row.append(reveal);
-    } else row.append(download);
+      const reveal = make('button', 'folder-link', 'Abrir carpeta ↗');
+      reveal.addEventListener('click', () => revealFolder(file.id, reveal));
+      actions.append(reveal);
+    }
+    row.append(actions);
     list.append(row);
   }
 }
@@ -222,9 +226,9 @@ const digest = async blob => {
 function renderTasks() {
   $('#activitySection').hidden = !tasks.length;
   const active = tasks.filter(task => !['complete', 'cancelled'].includes(task.status));
-  $('#queueCount').textContent = active.length ? `${active.length} pendiente${active.length === 1 ? '' : 's'}` : 'Todo llegó';
+  $('#queueCount').textContent = active.length ? `${active.length} pendiente${active.length === 1 ? '' : 's'}` : state.admin ? 'Archivos preparados' : 'Todo guardado';
   const list = $('#uploadList'); list.replaceChildren();
-  const status = { queued: 'En espera', preparing: 'Preparando', uploading: 'Enviando', paused: 'En pausa', error: 'Pendiente de reintento', selection: 'Elige el original', verifying: 'Comprobando el original', completing: 'Verificando en Windows', complete: 'Disponible en Windows', cancelling: 'Cancelando' };
+  const status = { queued: 'En espera', preparing: 'Preparando', uploading: 'Enviando', paused: 'En pausa', error: 'Pendiente de reintento', selection: 'Elige el original', verifying: 'Comprobando el original', completing: 'Verificando en Windows', complete: state.admin ? 'Listo para el iPhone' : 'Guardado en Windows', cancelling: 'Cancelando' };
   for (const task of tasks.filter(task => task.status !== 'cancelled')) {
     const row = make('article', 'upload-row'); row.append(fileIcon(task));
     const info = make('div', 'file-info'); const top = make('div', 'upload-top');
@@ -387,11 +391,17 @@ $('#resumeInput').addEventListener('change', event => { resumeFromSelection(even
 $('#pairForm').addEventListener('submit', requestPair);
 $('#pairAgain').addEventListener('click', requestPair);
 $('#refreshFiles').addEventListener('click', async () => { await refresh(); if ($('#offlineBanner').hidden) toast('Archivos actualizados.'); });
-async function revealFolder(id) {
-  try { await api('/api/storage/reveal', { method: 'POST', body: JSON.stringify({ id }) }); }
+async function revealFolder(id, button) {
+  const label = button?.textContent;
+  if (button) { button.disabled = true; button.textContent = 'Abriendo…'; }
+  try {
+    await api('/api/storage/reveal', { method: 'POST', body: JSON.stringify({ id }) });
+    toast('Carpeta abierta en el Explorador de Windows.');
+  }
   catch (error) { toast(error.message, true); }
+  finally { if (button) { button.disabled = false; button.textContent = label; } }
 }
-$('#openFolder').addEventListener('click', () => revealFolder());
+$('#openFolder').addEventListener('click', event => revealFolder(undefined, event.currentTarget));
 for (const id of ['connectButton', 'connectButtonDevices']) $( `#${id}`).addEventListener('click', () => $('#connectDialog').showModal());
 $('#closeConnect').addEventListener('click', () => $('#connectDialog').close());
 $('#addressSelect').addEventListener('change', updateQr);

@@ -40,16 +40,16 @@ async function pair(app, name = 'iPhone de prueba') {
   assert.match(status.headers['set-cookie'][0], /HttpOnly; Secure; SameSite=Strict/);
   return { token, id: proposal.json.id, cookie: status.headers['set-cookie'][0].split(';')[0] };
 }
-async function fixture(t) {
+async function fixture(t, options = {}) {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'brisa-test-'));
-  let app = await createBrisa({ dataDir, httpPort: 0, httpsPort: 0, bind: '127.0.0.1', discovery: false, addresses: ['127.0.0.1'] });
+  let app = await createBrisa({ dataDir, httpPort: 0, httpsPort: 0, bind: '127.0.0.1', discovery: false, addresses: ['127.0.0.1'], ...options });
   t.after(async () => {
     await app.close();
     assert.equal(path.dirname(path.resolve(dataDir)), path.resolve(os.tmpdir()));
     assert.ok(path.basename(dataDir).startsWith('brisa-test-'));
     await fs.rm(dataDir, { recursive: true, force: true });
   });
-  return { get app() { return app; }, dataDir, async restart() { await app.close(); app = await createBrisa({ dataDir, httpPort: 0, httpsPort: 0, bind: '127.0.0.1', discovery: false, addresses: ['127.0.0.1'] }); return app; } };
+  return { get app() { return app; }, dataDir, async restart() { await app.close(); app = await createBrisa({ dataDir, httpPort: 0, httpsPort: 0, bind: '127.0.0.1', discovery: false, addresses: ['127.0.0.1'], ...options }); return app; } };
 }
 test('vinculación persistente, cookie de pantalla de inicio, revocación y control de acceso', async t => {
   const f = await fixture(t);
@@ -139,4 +139,25 @@ test('configuración pública, QR local y certificados privados inaccesibles', a
   const qr = await request(f.app, `/api/qr?url=${encodeURIComponent(target)}`, { headers: { 'X-Brisa-Client': '' } });
   assert.equal(qr.status, 200); assert.match(qr.bytes.toString(), /<svg/);
   assert.equal((await request(f.app, '/api/qr?url=https%3A%2F%2Fevil.example')).status, 400);
+});
+
+test('abrir carpetas usa solo destinos de Brisa y devuelve un error visible si Windows falla', async t => {
+  const opened = []; let failOpen = false;
+  const f = await fixture(t, { openFolder: async folder => { if (failOpen) throw new Error('No interactive shell'); opened.push(folder); } });
+  const device = await pair(f.app);
+  assert.equal((await request(f.app, '/api/storage/reveal', { secure: true, token: device.token, method: 'POST', data: {} })).status, 403);
+  assert.equal(opened.length, 0);
+  assert.equal((await request(f.app, '/api/storage/reveal', { method: 'POST', data: {} })).status, 200);
+  assert.equal(opened[0], path.join(f.dataDir, 'files'));
+  const created = await request(f.app, '/api/uploads', { method: 'POST', data: { name: "Foto de mamá & prueba's.zip", size: 0 } });
+  const id = created.json.id;
+  await request(f.app, `/api/uploads/${id}/complete`, { method: 'POST' });
+  assert.equal((await request(f.app, '/api/storage/reveal', { method: 'POST', data: { id } })).status, 200);
+  assert.equal(opened[1], path.dirname(f.app.transfers.file(id)));
+  assert.equal((await request(f.app, '/api/storage/reveal', { method: 'POST', data: { id: '../state.json' } })).status, 404);
+  assert.equal(opened.length, 2);
+  failOpen = true;
+  const failed = await request(f.app, '/api/storage/reveal', { method: 'POST', data: {} });
+  assert.equal(failed.status, 502); assert.match(failed.json.error, /Descargar/);
+  assert.equal((await request(f.app, `/api/files/${id}/download`)).status, 200);
 });

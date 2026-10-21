@@ -17,6 +17,8 @@ npm.cmd start
 
 No se instala inicio automático ni se modifican las reglas del firewall automáticamente. Si Windows pregunta por acceso a la red, permite Node.js **en tu red privada de confianza**.
 
+Si cambias de repositorio o actualizas Brisa, cierra el servidor anterior con `Detener-Brisa.cmd` y abre `Iniciar-Brisa.cmd` desde la carpeta nueva. El lanzador detecta si quedó abierta otra copia o versión, para evitar mostrar código anterior por error. Conserva la carpeta local `.brisa` para mantener archivos, certificados y vinculación; debe seguir excluida de Git.
+
 ## Conectar el iPhone la primera vez
 
 1. Conecta el iPhone y Windows a la misma red. Windows también puede estar conectado por cable al router.
@@ -33,7 +35,7 @@ Si el icono de inicio abre sin la autorización que tenías en Safari, aprueba e
 ## Transferir
 
 - **Windows → iPhone:** arrastra o selecciona archivos en el panel de Windows. En el iPhone aparecerán en **Listos para llevar**; toca **Descargar**. Safari gestiona el guardado. Para imágenes, puedes guardarlas después en Fotos desde iOS.
-- **iPhone → Windows:** abre Brisa en el teléfono y toca **Enviar archivos**. En Windows quedan guardados automáticamente. **Mostrar** abre el Explorador con el archivo seleccionado; **Abrir carpeta** abre todos los recibidos.
+- **iPhone → Windows:** abre Brisa en el teléfono y toca **Enviar a Windows**. Los archivos quedan guardados automáticamente en la computadora. En cada fila del panel de Windows puedes elegir **Descargar** para guardar otra copia o **Abrir carpeta** para ver la carpeta que contiene el archivo. El botón superior **Abrir carpeta** abre todos los recibidos.
 - Se transfieren archivos originales sin convertirlos ni comprimirlos. Se admiten ZIP; no se extraen. No se admiten selecciones de carpetas como tales.
 - Puedes pausar y reintentar envíos. Si recargas la página o reinicias Windows, aparecerán las transferencias pendientes. Elige de nuevo el archivo original: Brisa verifica las partes ya recibidas antes de continuar.
 - Las descargas usan HTTP Range y ETag. Su reanudación depende del gestor de descargas de Safari; no hay una cola de descargas propia en esta versión.
