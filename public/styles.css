@@ -57,3 +57,45 @@ main{padding-bottom:env(safe-area-inset-bottom,0px)}
   .bridge-line{width:88px;flex-shrink:1}
   .bridge-line small{white-space:normal;text-align:center;width:100%;line-height:1.5}
 }
+
+/* Brisa-owned dialogs and activity surfaces. SVG keeps close buttons optically centered. */
+.icon-button{display:inline-grid;place-items:center;width:36px;height:36px;min-width:36px;min-height:36px;padding:0;line-height:0;flex-shrink:0}
+.icon-button svg{display:block;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+.topbar-actions{display:flex;align-items:center;gap:12px;min-width:0}
+.notifications-button{display:grid;place-items:center;position:relative;width:36px;height:36px;flex-shrink:0;border-radius:50%;background:#eaf0e3;color:#55744b}
+.notifications-button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.notification-badge{position:absolute;right:-4px;top:-5px;min-width:17px;height:17px;display:grid;place-items:center;background:#c7aa68;color:#fff;border-radius:12px;font-size:9px;padding:0 4px;line-height:1}
+.section-count{display:inline-block;vertical-align:middle;font-size:10px;line-height:1;background:#e6eddc;color:#789267;border-radius:7px;padding:5px 7px;margin-left:5px}
+.notifications-dialog{width:min(510px,calc(100% - 28px))}
+.notification-list-heading{margin:24px 0 12px}
+.notification-list-heading h3{font-size:13px;margin:0;font-weight:600}
+#notificationList,#liveNotifications,#incomingList{display:grid;gap:10px}
+#incomingList:not(:empty){margin-top:10px}
+.notification-card,.live-transfer{position:relative;min-width:0;border:1px solid #dfe7d6;border-radius:10px;padding:15px;background:#fff}
+.notification-card.unread{border-left:3px solid #86a76d}
+.notification-card.warning{border-color:#d7bc84;background:#fbf5e7}
+.notification-card strong,.live-transfer strong{display:block;font-size:12px;line-height:1.6;font-weight:600}
+.notification-card p,.live-transfer p{font-size:11px;line-height:1.7;color:#879579;margin-top:6px;overflow-wrap:anywhere}
+.notification-card time{display:block;color:#a1aa96;font-size:9px;margin-top:8px}
+.live-transfer{background:#f0f5e9}
+.live-transfer progress{display:block;width:100%;height:5px;border:0;appearance:none;border-radius:5px;overflow:hidden;background:#dde6d3;accent-color:#7b9e65;margin:12px 0 8px}
+.live-transfer progress::-webkit-progress-bar{background:#dde6d3}
+.live-transfer progress::-webkit-progress-value{background:#7b9e65}
+.live-transfer .subtle{display:block;text-align:right;font-size:10px}
+.confirm-dialog form>p{font-size:13px;line-height:1.8;color:#819071;overflow-wrap:anywhere}
+.confirm-dialog h2{overflow-wrap:anywhere}
+.confirm-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px;margin-top:25px}
+#historyView .page-heading{margin-bottom:25px}
+#historyList{margin-top:20px}
+dialog{max-height:min(90dvh,calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 28px))}
+@media(max-width:700px){
+  nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .nav-item{min-width:0;justify-content:center;white-space:normal;line-height:1.5;font-size:11px;gap:5px;min-height:47px;padding-top:8px;padding-bottom:10px}
+  .nav-icon{display:none}
+  .nav-count{flex-shrink:0;font-size:8px;margin-left:0;min-width:15px}
+  .topbar-actions{gap:10px}
+  .notifications-button{width:32px;height:32px}
+  .notifications-dialog .section-description{font-size:11px}
+  .notification-list-heading .text-button{font-size:10px}
+  .confirm-actions .primary,.confirm-actions .secondary{font-size:12px;min-height:43px}
+}

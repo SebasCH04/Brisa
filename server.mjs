@@ -12,6 +12,7 @@ import { openStorage, tokenHash } from './lib/storage.mjs';
 import { certificates } from './lib/tls.mjs';
 import { Transfers, CHUNK_SIZE } from './lib/transfers.mjs';
 import { openWindowsFolder } from './lib/windows-shell.mjs';
+import { Activity } from './lib/activity.mjs';
 
 export const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
@@ -49,6 +50,7 @@ export async function createBrisa(options = {}) {
   const addresses = options.addresses || networkAddresses();
   const tls = await certificates(dataDir, hostname, addresses);
   const transfers = new Transfers(storage);
+  const activity = new Activity(transfers, storage);
   const pending = new Map();
   const attempts = new Map();
   const presence = new Map();
@@ -104,11 +106,13 @@ export async function createBrisa(options = {}) {
       }
       if (pathname.startsWith('/api/')) {
         const download = /^\/api\/files\/[a-f0-9-]{36}\/download$/.test(pathname);
-        if (!download && !(pathname === '/api/qr' && actor?.admin) && request.headers['x-brisa-client'] !== '1') throw error('Solicitud no válida.', 403);
+        const events = pathname === '/api/events' && request.method === 'GET' && actor;
+        if (!download && !events && !(pathname === '/api/qr' && actor?.admin) && request.headers['x-brisa-client'] !== '1') throw error('Solicitud no válida.', 403);
         if (!request.socket.encrypted && !actor?.admin) throw error('Abre la conexión HTTPS de Brisa.', 403);
         cleanPending();
         if (pathname === '/api/bootstrap' && request.method === 'GET') {
-          const result = { name: info.name, version: VERSION, chunkSize: CHUNK_SIZE, authenticated: Boolean(actor), admin: Boolean(actor?.admin), device: actor ? { id: actor.id, name: actor.name } : null };
+          const result = { name: info.name, version: VERSION, chunkSize: CHUNK_SIZE, serverTime: Date.now(), authenticated: Boolean(actor), admin: Boolean(actor?.admin), device: actor ? { id: actor.id, name: actor.name } : null };
+          if (actor) Object.assign(result, { activityInstance: activity.instance, activityCursor: activity.cursor });
           if (actor?.admin) Object.assign(result, {
             ...info, desktopUrl: `http://127.0.0.1:${info.httpPort}`,
             setupUrls: [hostname, ...addresses].map(host => `http://${host}:${info.httpPort}/setup`),
@@ -146,6 +150,15 @@ export async function createBrisa(options = {}) {
           return json(response, { approved: false, pending: Boolean(item) });
         }
         if (!actor) throw error('Vincula primero este dispositivo desde tu computadora.', 401);
+        if (['/api/events', '/api/activity'].includes(pathname) && request.method === 'GET') {
+          const lastId = typeof request.headers['last-event-id'] === 'string' ? request.headers['last-event-id'] : '';
+          const [lastInstance, lastCursor] = lastId.split(':');
+          const sameInstance = (lastId ? lastInstance : url.searchParams.get('instance')) === activity.instance;
+          const requested = Number(lastId ? lastCursor : url.searchParams.get('after') || 0);
+          const after = sameInstance && Number.isSafeInteger(requested) && requested >= 0 && requested <= activity.cursor ? requested : 0;
+          if (pathname === '/api/events') return activity.subscribe(request, response, actor, after);
+          return json(response, activity.snapshot(actor, after));
+        }
         const approval = pathname.match(/^\/api\/pair\/([a-f0-9-]{36})\/(approve|reject)$/);
         if (approval && request.method === 'POST') {
           if (!actor.admin) throw error('Solo puedes hacer esto desde Windows.', 403);
@@ -162,7 +175,7 @@ export async function createBrisa(options = {}) {
         const deviceMatch = pathname.match(/^\/api\/devices\/([a-f0-9-]{36})$/);
         if (deviceMatch && request.method === 'DELETE') {
           if (!actor.admin) throw error('Solo puedes hacer esto desde Windows.', 403);
-          storage.state.devices = storage.state.devices.filter(item => item.id !== deviceMatch[1]); storage.save();
+          storage.state.devices = storage.state.devices.filter(item => item.id !== deviceMatch[1]); storage.save(); activity.broadcast();
           return json(response, { ok: true });
         }
         if (pathname === '/api/qr' && request.method === 'GET') {
@@ -189,19 +202,35 @@ export async function createBrisa(options = {}) {
           return json(response, { ok: true });
         }
         if (pathname === '/api/uploads' && request.method === 'GET') return json(response, { uploads: [...transfers.uploads.values()].filter(item => item.owner === actor.id).map(({ owner, ...item }) => item) });
-        if (pathname === '/api/uploads' && request.method === 'POST') return json(response, transfers.create(await body(request), actor.id), 201);
+        if (pathname === '/api/uploads' && request.method === 'POST') {
+          const upload = transfers.create(await body(request), actor.id);
+          activity.touched.set(upload.id, Date.now());
+          activity.record('upload-started', upload, actor);
+          return json(response, upload, 201);
+        }
         const uploadMatch = pathname.match(/^\/api\/uploads\/([a-f0-9-]{36})(?:\/(chunk|complete))?$/);
         if (uploadMatch) {
           const [, id, action] = uploadMatch;
           if (request.method === 'GET' && !action) return json(response, transfers.get(id, actor.id));
-          if (request.method === 'DELETE' && !action) { transfers.cancel(id, actor.id); return json(response, { ok: true }); }
+          if (request.method === 'DELETE' && !action) {
+            const upload = transfers.get(id, actor.id);
+            transfers.cancel(id, actor.id); activity.touched.delete(id);
+            activity.record('upload-cancelled', upload, actor);
+            return json(response, { ok: true });
+          }
           if (request.method === 'PUT' && action === 'chunk') {
             if (!/^\d+$/.test(url.searchParams.get('offset') || '')) throw error('El progreso no es válido.');
             if (transfers.busy.size >= 4) throw error('Hay otras transferencias activas. Reintenta en un momento.', 429);
             const result = await transfers.chunk(id, actor.id, Number(url.searchParams.get('offset')), request, request.headers['x-content-sha256']);
+            activity.touch(id);
             return json(response, { id: result.id, offset: result.offset, size: result.size });
           }
-          if (request.method === 'POST' && action === 'complete') return json(response, publicFile(await transfers.complete(id, actor.id)));
+          if (request.method === 'POST' && action === 'complete') {
+            const wasPending = transfers.uploads.has(id);
+            const file = await transfers.complete(id, actor.id);
+            if (wasPending) { activity.touched.delete(id); activity.record('upload-completed', file, actor); }
+            return json(response, publicFile(file));
+          }
         }
         const fileMatch = pathname.match(/^\/api\/files\/([a-f0-9-]{36})\/download$/);
         if (fileMatch && ['GET', 'HEAD'].includes(request.method)) {
@@ -231,8 +260,13 @@ export async function createBrisa(options = {}) {
           response.setHeader('Content-Length', file.size === 0 ? 0 : end - start + 1);
           if (partial) response.setHeader('Content-Range', `bytes ${start}-${end}/${file.size}`);
           response.writeHead(partial ? 206 : 200);
-          if (request.method === 'HEAD' || !file.size) return response.end();
+          if (request.method === 'HEAD') return response.end();
+          const delivery = activity.beginDelivery(file, actor, file.size === 0 ? 0 : end - start + 1, partial);
+          response.once('finish', () => delivery.finish(true));
+          response.once('close', () => delivery.finish(response.writableFinished));
+          if (!file.size) return response.end();
           const stream = fs.createReadStream(transfers.file(file.id), { start, end });
+          stream.on('data', () => delivery.progress(stream.bytesRead));
           response.on('close', () => stream.destroy());
           stream.on('error', () => response.destroy());
           return stream.pipe(response);
@@ -245,7 +279,7 @@ export async function createBrisa(options = {}) {
       }
       if (!['GET', 'HEAD'].includes(request.method)) throw error('Método no permitido.', 405);
       const asset = pathname === '/' ? 'index.html' : pathname === '/setup' ? 'setup.html' : pathname.slice(1);
-      const allowed = new Set(['index.html', 'setup.html', 'app.js', 'setup.js', 'styles.css', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'sw.js']);
+      const allowed = new Set(['index.html', 'setup.html', 'app.js', 'activity.js', 'setup.js', 'styles.css', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'sw.js']);
       if (!allowed.has(asset)) throw error('No encontramos esa página.', 404);
       if (!request.socket.encrypted && !actor?.admin && asset === 'index.html') {
         response.writeHead(302, { Location: '/setup' }); return response.end();
@@ -298,10 +332,11 @@ export async function createBrisa(options = {}) {
   }
   async function close() {
     if (stopping) return; stopping = true;
+    activity.close();
     if (discovery) { discovery.unpublishAll(); discovery.destroy(); }
     await Promise.all([localServer, secureServer].map(server => new Promise(resolve => { server.close(resolve); server.closeIdleConnections(); })));
   }
-  return { info, storage, transfers, ca: tls.ca, close, localServer, secureServer };
+  return { info, storage, transfers, activity, ca: tls.ca, close, localServer, secureServer };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   createBrisa().then(app => {

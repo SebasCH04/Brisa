@@ -34,13 +34,23 @@ Si el icono de inicio abre sin la autorización que tenías en Safari, aprueba e
 
 ## Transferir
 
-- **Windows → iPhone:** arrastra o selecciona archivos en el panel de Windows. En el iPhone aparecerán en **Listos para llevar**; toca **Descargar**. Safari gestiona el guardado. Para imágenes, puedes guardarlas después en Fotos desde iOS.
+- **Windows → iPhone:** arrastra o selecciona archivos en el panel de Windows. En el iPhone aparecerán en **Esta sesión** si Brisa ya estaba abierta, o en **Historial** si los preparaste antes de abrirla. Toca **Descargar**. Safari gestiona el guardado. Para imágenes, puedes guardarlas después en Fotos desde iOS.
 - **iPhone → Windows:** abre Brisa en el teléfono y toca **Enviar a Windows**. Los archivos quedan guardados automáticamente en la computadora. En cada fila del panel de Windows puedes elegir **Descargar** para guardar otra copia o **Abrir carpeta** para ver la carpeta que contiene el archivo. El botón superior **Abrir carpeta** abre todos los recibidos.
 - Se transfieren archivos originales sin convertirlos ni comprimirlos. Se admiten ZIP; no se extraen. No se admiten selecciones de carpetas como tales.
 - Puedes pausar y reintentar envíos. Si recargas la página o reinicias Windows, aparecerán las transferencias pendientes. Elige de nuevo el archivo original: Brisa verifica las partes ya recibidas antes de continuar.
 - Las descargas usan HTTP Range y ETag. Su reanudación depende del gestor de descargas de Safari; no hay una cola de descargas propia en esta versión.
 
 Los archivos permanecen en **`.brisa/files/<identificador>/<nombre original>`**. Los identificadores permiten recibir dos archivos con el mismo nombre sin sobrescribirlos. Brisa almacena una copia de los archivos enviados desde Windows, por lo que debes tener espacio disponible para ella. No hay limpieza automática: elimina los archivos que no necesites desde el Explorador. Si eliminas uno manualmente, su registro todavía puede aparecer en la interfaz; la gestión de biblioteca queda para una siguiente versión.
+
+## Esta sesión, historial y avisos
+
+- **Esta sesión:** los archivos preparados o recibidos desde que abriste Brisa en esa pestaña, más archivos anteriores que descargues durante ella. Recargar conserva la sesión cuando el navegador permite guardar sus datos. **Nueva sesión** limpia esa vista y sus avisos, sin eliminar archivos.
+- **Historial:** todos los archivos disponibles, incluidos los de sesiones anteriores. Se conserva en Windows al reiniciar el servidor.
+- **Campana de notificaciones:** avisos dentro de Brisa sobre inicio de envío, archivo disponible, entrega en curso, entrega completada o interrumpida. Muestra los últimos 50 avisos de la sesión. Abrir la campana los marca como leídos.
+- El progreso de recepción y entrega aparece en **En camino** y en la campana, con conexión en vivo y consulta periódica de respaldo. Un archivo preparado en Windows queda disponible para el iPhone; su entrega se anuncia cuando este lo descarga.
+- Un aviso de entrega completada indica que Brisa terminó de enviar los datos al navegador. Safari o Windows controlan el guardado final. Una descarga por rangos se identifica como parcial.
+- Las confirmaciones, como olvidar un dispositivo o empezar otra sesión, son cuadros de Brisa. Los selectores de archivos, el guardado y los permisos del sistema siguen perteneciendo a iOS o Windows.
+- Mientras envías un archivo, la página recuerda mantener Brisa abierta. Cerrarla puede interrumpir el envío; no se muestra una confirmación propia del navegador y puedes reanudar seleccionando el original.
 
 ## Si el iPhone no conecta
 

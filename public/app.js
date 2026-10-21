@@ -1,3 +1,4 @@
+import { ActivityUI, appConfirm } from './activity.js';
 const $ = selector => document.querySelector(selector);
 const make = (tag, className, text) => {
   const element = document.createElement(tag);
@@ -22,6 +23,7 @@ let toastTimer;
 let fileSignature = '';
 let deviceSignature = '';
 let wakeLock;
+let allFiles = [];
 const bytes = amount => {
   if (!amount) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -42,10 +44,15 @@ async function api(url, options = {}) {
   if (!response.ok) throw Object.assign(new Error(result.error || 'No pudimos completar la operación.'), { status: response.status });
   return result;
 }
+const activityUI = new ActivityUI({ api, toast, make,
+  changed: () => { renderFiles(allFiles); renderTasks(); },
+  reset: () => { tasks = tasks.filter(task => !['complete', 'cancelled'].includes(task.status)); renderTasks(); }
+});
 function showView(view) {
   $('#transferView').hidden = view !== 'transfer';
+  $('#historyView').hidden = view !== 'history';
   $('#devicesView').hidden = view !== 'devices';
-  $('#breadcrumb').textContent = `Mi espacio / ${view === 'transfer' ? 'Transferir' : 'Mis dispositivos'}`;
+  $('#breadcrumb').textContent = `Mi espacio / ${{ transfer: 'Transferir', history: 'Historial', devices: 'Mis dispositivos' }[view]}`;
   document.querySelectorAll('[data-view]').forEach(button => {
     button.classList.toggle('active', button.dataset.view === view);
     if (button.dataset.view === view) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
@@ -60,13 +67,14 @@ function configure(info) {
   $('#appContent').hidden = !info.authenticated;
   document.querySelectorAll('.desktop-only').forEach(element => { element.hidden = !info.admin; });
   $('#computerLabel').textContent = info.name;
-  if (!info.authenticated) return;
+  if (!info.authenticated) { activityUI.stop(); return; }
+  activityUI.start(info);
   $('#phoneLabel').textContent = info.admin ? (info.devices?.find(device => device.online)?.name || info.devices?.[0]?.name || 'Tu iPhone') : info.device.name;
   $('#bridgeText').textContent = info.admin && !info.devices?.length ? 'El primer vínculo' : 'Todo queda en tu red';
   $('#dropTitle').textContent = info.admin ? 'De Windows a tu iPhone.' : 'De tu iPhone a Windows.';
   $('#dropHint').textContent = info.admin ? 'Arrastra o selecciona archivos. Después podrás descargarlos desde Brisa en tu iPhone.' : 'Selecciona fotos, videos o documentos. Se guardarán en tu computadora.';
   $('#chooseFiles').firstChild.textContent = info.admin ? 'Enviar al iPhone ' : 'Enviar a Windows ';
-  $('#filesDescription').textContent = info.admin ? 'Descarga una copia o abre la carpeta de los archivos recibidos. También están disponibles en tu iPhone.' : 'Descarga los archivos enviados desde Windows o consulta lo que ya enviaste a tu computadora.';
+  $('#filesDescription').textContent = 'Archivos enviados o descargados desde que abriste Brisa. Recargar conserva esta sesión; los anteriores están en Historial.';
   $('#deviceCount').textContent = String(info.admin ? info.devices.length : 1);
   renderDevices();
   if (info.admin) {
@@ -97,7 +105,7 @@ function renderDevices() {
     card.append(make('span', 'device-symbol', '▯'), make('strong', '', device.name), make('p', '', device.online ? 'Conectado ahora' : 'Vinculado · Sin conexión ahora'));
     const revoke = make('button', 'text-button', 'Olvidar dispositivo');
     revoke.addEventListener('click', async () => {
-      if (!confirm(`¿Olvidar «${device.name}»? Para volver a conectar tendrá que solicitar autorización.`)) return;
+      if (!await appConfirm({ title: `¿Olvidar ${device.name}?`, message: 'Este dispositivo perderá el acceso. Para volver a conectar tendrá que solicitar autorización desde Brisa.', accept: 'Olvidar dispositivo' })) return;
       try { await api(`/api/devices/${device.id}`, { method: 'DELETE' }); await refresh(); toast('Dispositivo desvinculado.'); }
       catch (error) { toast(error.message, true); }
     });
@@ -128,11 +136,20 @@ function updateQr() {
   $('#setupLink').href = target; $('#setupLink').textContent = target;
 }
 function renderFiles(files) {
-  const signature = JSON.stringify(files);
+  allFiles = files;
+  const signature = JSON.stringify([files, activityUI.session?.id, activityUI.session?.files]);
   if (signature === fileSignature) return;
   fileSignature = signature;
-  $('#emptyState').hidden = files.length > 0;
-  const list = $('#fileList'); list.replaceChildren();
+  const sessionFiles = files.filter(file => activityUI.belongs(file));
+  $('#emptyState').hidden = sessionFiles.length > 0;
+  $('#historyEmpty').hidden = files.length > 0;
+  $('#historyCount').textContent = String(files.length);
+  $('#sessionCount').textContent = String(sessionFiles.length);
+  renderFileList($('#fileList'), sessionFiles);
+  renderFileList($('#historyList'), files);
+}
+function renderFileList(list, files) {
+  list.replaceChildren();
   for (const file of files) {
     const row = make('article', 'file-row');
     row.append(fileIcon(file));
@@ -169,6 +186,7 @@ async function refresh() {
     configure(info);
     if (info.authenticated) {
       renderFiles((await api('/api/files')).files);
+      activityUI.ingest(await api(activityUI.query()));
       if (!initialized) {
         initialized = true;
         const result = await api('/api/uploads');
@@ -194,6 +212,7 @@ function token() {
 }
 async function requestPair(event) {
   event?.preventDefault();
+  if (!$('#deviceName').value.trim()) { toast('Escribe un nombre para este dispositivo.', true); $('#deviceName').focus(); return; }
   if (!identity) { identity = token(); stored.set('brisa-identity', identity); }
   const button = $('#pairForm button'); button.disabled = true;
   try {
@@ -224,12 +243,13 @@ const digest = async blob => {
   return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
 };
 function renderTasks() {
-  $('#activitySection').hidden = !tasks.length;
+  const visibleTasks = tasks.filter(task => !['complete', 'cancelled'].includes(task.status));
+  $('#activitySection').hidden = !visibleTasks.length && !activityUI.active.length;
   const active = tasks.filter(task => !['complete', 'cancelled'].includes(task.status));
   $('#queueCount').textContent = active.length ? `${active.length} pendiente${active.length === 1 ? '' : 's'}` : state.admin ? 'Archivos preparados' : 'Todo guardado';
   const list = $('#uploadList'); list.replaceChildren();
   const status = { queued: 'En espera', preparing: 'Preparando', uploading: 'Enviando', paused: 'En pausa', error: 'Pendiente de reintento', selection: 'Elige el original', verifying: 'Comprobando el original', completing: 'Verificando en Windows', complete: state.admin ? 'Listo para el iPhone' : 'Guardado en Windows', cancelling: 'Cancelando' };
-  for (const task of tasks.filter(task => task.status !== 'cancelled')) {
+  for (const task of visibleTasks) {
     const row = make('article', 'upload-row'); row.append(fileIcon(task));
     const info = make('div', 'file-info'); const top = make('div', 'upload-top');
     const name = make('span', 'file-name', task.name); name.title = task.name;
@@ -410,6 +430,5 @@ for (const event of ['dragleave', 'drop']) $('#dropzone').addEventListener(event
 $('#dropzone').addEventListener('drop', event => { if (state?.authenticated) addFiles([...event.dataTransfer.files]); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { refresh(); checkPair(); if (pumping) acquireWakeLock(); } });
 window.addEventListener('online', refresh);
-window.addEventListener('beforeunload', event => { if (tasks.some(task => ['uploading', 'queued', 'completing'].includes(task.status))) { event.preventDefault(); event.returnValue = ''; } });
 await refresh();
 setInterval(() => { refresh(); checkPair(); }, 3500);

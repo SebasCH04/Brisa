@@ -161,3 +161,89 @@ test('abrir carpetas usa solo destinos de Brisa y devuelve un error visible si W
   assert.equal(failed.status, 502); assert.match(failed.json.error, /Descargar/);
   assert.equal((await request(f.app, `/api/files/${id}/download`)).status, 200);
 });
+
+async function waitUntil(predicate) {
+  const deadline = Date.now() + 4000;
+  while (!predicate()) {
+    if (Date.now() > deadline) throw new Error('No llegó el evento esperado.');
+    await new Promise(resolve => setTimeout(resolve, 25));
+  }
+}
+async function eventStream(app, { secure = false, cookie } = {}) {
+  return new Promise((resolve, reject) => {
+    const transport = secure ? https : http;
+    const result = { packets: [], ended: false };
+    result.request = transport.get({ hostname: '127.0.0.1', port: secure ? app.info.httpsPort : app.info.httpPort, path: '/api/events', ...(secure ? { ca: app.ca } : {}), headers: cookie ? { Cookie: cookie } : {} }, response => {
+      result.response = response;
+      if (response.statusCode !== 200) { response.resume(); reject(new Error(`SSE ${response.statusCode}`)); return; }
+      let buffer = '';
+      response.on('data', chunk => {
+        buffer += chunk.toString();
+        let boundary;
+        while ((boundary = buffer.indexOf('\n\n')) >= 0) {
+          const packet = buffer.slice(0, boundary); buffer = buffer.slice(boundary + 2);
+          const data = packet.split('\n').find(line => line.startsWith('data: '));
+          if (data) { result.packets.push(JSON.parse(data.slice(6))); resolve(result); }
+        }
+      });
+      response.on('end', () => { result.ended = true; });
+    });
+    result.request.on('error', reject);
+  });
+}
+test('avisos en vivo: inicio, progreso, entrega, aislamiento entre teléfonos y revocación', async t => {
+  const f = await fixture(t);
+  const phone = await pair(f.app, 'iPhone A'); const other = await pair(f.app, 'iPhone B');
+  const options = { secure: true, token: phone.token };
+  const desktopEvents = await eventStream(f.app);
+  const phoneEvents = await eventStream(f.app, { secure: true, cookie: phone.cookie });
+  t.after(() => { desktopEvents.request.destroy(); phoneEvents.request.destroy(); });
+  const initialCursor = f.app.activity.cursor;
+  const created = await request(f.app, '/api/uploads', { ...options, method: 'POST', data: { name: 'aviso.zip', size: 7 } });
+  const id = created.json.id;
+  await waitUntil(() => desktopEvents.packets.some(packet => packet.events.some(event => event.type === 'upload-started' && event.fileId === id)));
+  const active = await request(f.app, '/api/activity', options);
+  assert.equal(active.json.active[0].fileId, id);
+  assert.equal((await request(f.app, '/api/activity', { secure: true, token: other.token })).json.events.length, 0);
+  const payload = Buffer.from('1234567');
+  await request(f.app, `/api/uploads/${id}/chunk?offset=0`, { ...options, method: 'PUT', data: payload, headers: { 'X-Content-SHA256': hash(payload) } });
+  assert.equal((await request(f.app, '/api/activity', options)).json.active[0].bytes, 7);
+  await request(f.app, `/api/uploads/${id}/complete`, { ...options, method: 'POST' });
+  await request(f.app, `/api/uploads/${id}/complete`, { ...options, method: 'POST' });
+  const beforeDownload = f.app.activity.cursor;
+  assert.equal(beforeDownload, initialCursor + 2);
+  await request(f.app, `/api/files/${id}/download`, { ...options, method: 'HEAD' });
+  assert.equal(f.app.activity.cursor, beforeDownload, 'HEAD no debe anunciar una entrega');
+  const downloaded = await request(f.app, `/api/files/${id}/download`, options); assert.deepEqual(downloaded.bytes, payload);
+  await waitUntil(() => desktopEvents.packets.some(packet => packet.events.some(event => event.type === 'delivery-completed' && event.fileId === id)));
+  const activity = (await request(f.app, `/api/activity?instance=${f.app.activity.instance}&after=${beforeDownload}`, options)).json;
+  assert.deepEqual(activity.events.map(event => event.type), ['delivery-started', 'delivery-completed']);
+  assert.equal(activity.events[1].partial, false);
+  assert.equal(activity.active.length, 0);
+  await request(f.app, `/api/files/${id}/download`, { ...options, headers: { Range: 'bytes=0-1' } });
+  assert.equal(f.app.activity.events.at(-1).partial, true, 'un rango no equivale a guardar el archivo completo');
+  assert.equal((await request(f.app, '/api/events', { headers: { Origin: 'https://evil.example' } })).status, 403);
+  await request(f.app, `/api/devices/${phone.id}`, { method: 'DELETE' });
+  await waitUntil(() => phoneEvents.ended);
+  desktopEvents.request.destroy();
+  await f.restart();
+  assert.equal((await request(f.app, '/api/files')).json.files.length, 1, 'el historial de archivos sobrevive al reinicio');
+});
+test('una descarga cortada genera aviso de interrupción y nunca de entrega completada', async t => {
+  const f = await fixture(t);
+  const payload = crypto.randomBytes(CHUNK_SIZE);
+  const created = await request(f.app, '/api/uploads', { method: 'POST', data: { name: 'descarga-interrumpida.zip', size: CHUNK_SIZE * 4 } });
+  const id = created.json.id;
+  for (let index = 0; index < 4; index++) await request(f.app, `/api/uploads/${id}/chunk?offset=${index * CHUNK_SIZE}`, { method: 'PUT', data: payload, headers: { 'X-Content-SHA256': hash(payload) } });
+  await request(f.app, `/api/uploads/${id}/complete`, { method: 'POST' });
+  await new Promise((resolve, reject) => {
+    const download = http.get(`http://127.0.0.1:${f.app.info.httpPort}/api/files/${id}/download`, response => {
+      response.once('data', () => { download.destroy(); resolve(); });
+      response.on('error', () => {});
+    });
+    download.on('error', caught => { if (caught.code !== 'ECONNRESET') reject(caught); });
+  });
+  await waitUntil(() => f.app.activity.events.some(event => event.type === 'delivery-interrupted'));
+  assert.ok(!f.app.activity.events.some(event => event.type === 'delivery-completed'));
+  assert.equal(f.app.activity.deliveries.size, 0);
+});
