@@ -1,4 +1,4 @@
-# Distribución y mantenimiento de Brisa 1.1
+# Distribución y mantenimiento de Brisa 1.2
 
 ## Alcance y requisitos
 
@@ -12,11 +12,11 @@ Los certificados locales son gratuitos. Los ejecutables no tienen firma comercia
 
 ## Instalar y conectar
 
-Abre `Brisa-Setup-1.1.0-x64.exe` para instalar por usuario, sin permisos de administrador. Alternativamente, abre `Brisa-Portable-1.1.0-x64.exe`: no instala accesos directos, pero conserva los datos en el perfil de Windows, no junto al ejecutable. Usa una modalidad a la vez.
+Abre `Brisa-Setup-1.2.0-x64.exe` para instalar por usuario, sin permisos de administrador. Alternativamente, abre `Brisa-Portable-1.2.0-x64.exe`: no instala accesos directos, pero conserva los datos en el perfil de Windows, no junto al ejecutable. Usa una modalidad a la vez.
 
 Si el firewall pregunta, permite **Brisa en redes privadas**. Usa TCP 3210 para el panel local y la instalación del certificado, TCP 3211 para HTTPS y UDP 5353 para el nombre local mDNS. No abras puertos en el router ni expongas Brisa a Internet. Redes de invitados, VPN y aislamiento entre clientes pueden impedir la conexión. Si `.local` no resuelve, prueba la dirección alternativa que muestra el panel.
 
-La X deja Brisa en la bandeja para mantener la conexión con el teléfono. Para detenerla usa **Salir de Brisa** desde su icono. No se instala inicio automático. Al cambiar de red, usa **Reiniciar conexión** en la bandeja, fuera de una transferencia activa.
+La X deja Brisa en la bandeja para mantener la conexión con el teléfono. Para detenerla usa **Salir de Brisa** desde su icono. El inicio automático está desactivado de forma predeterminada: puedes activarlo en **Ajustes → Iniciar con Windows**. Inicia en la bandeja al entrar en tu sesión. Al reemplazar o mover un portátil, ábrelo una vez desde la nueva ubicación para actualizar su acceso de inicio; si Windows lo desactivó, Brisa respeta esa decisión. La desinstalación del programa elimina su entrada de inicio. Al cambiar de red, usa **Reiniciar conexión** en la bandeja, fuera de una transferencia activa.
 
 ### iPhone
 
@@ -39,11 +39,15 @@ Mantén la app en primer plano: iOS puede suspenderla al bloquear el teléfono o
 | `%LOCALAPPDATA%\Brisa\Profile` | Preferencias y sesión del escritorio |
 | `%LOCALAPPDATA%\Brisa\Logs` | Registro de errores |
 
-Los originales se guardan en `Data\files\<identificador>\<nombre original>`. **Abrir carpeta** los muestra en el Explorador; el identificador evita sobrescribir nombres repetidos. No hay limpieza automática. **Borrar historial** oculta registros para todos los dispositivos, conservando los archivos y la sesión actual. Si eliminas un archivo en el Explorador, su registro puede seguir apareciendo.
+De forma predeterminada los originales se guardan en `Data\files\<identificador>\<nombre original>`. **Ajustes → Archivos recibidos** permite elegir otra carpeta para los nuevos envíos: no mueve los anteriores ni los que ya estaban pendientes. Cada archivo conserva su ubicación y **Abrir carpeta** abre la que le corresponde. El identificador evita sobrescribir nombres repetidos. Se admiten otras unidades; mantén conectada la unidad elegida.
+
+**Ajustes → Almacenamiento**, disponible en Windows, muestra todos los archivos de Brisa aunque hayas borrado su historial, el tamaño real de los disponibles, las transferencias pendientes y el espacio libre en la unidad seleccionada. Eliminar pide confirmación y bloquea archivos en descarga. El ejecutable los envía a la papelera de Windows; si la unidad no lo permite, muestra un error y no hace un borrado definitivo como alternativa. En el modo `npm start`, el borrado es definitivo y se indica en la confirmación. Los archivos desaparecen de Brisa en todos los dispositivos; las copias guardadas aparte se conservan. Los registros sin archivo disponible se pueden quitar sin borrar archivos de unidades desconectadas.
+
+No hay limpieza automática. **Borrar historial** solo oculta registros, conservando archivos y sesión actual; es distinto de eliminar desde Almacenamiento.
 
 Para actualizar, sal desde la bandeja e instala la nueva versión o reemplaza el portátil. Los datos permanecen. No hay actualizaciones automáticas. La desinstalación también conserva los datos; si quieres borrarlos, respáldalos primero y elimina `%LOCALAPPDATA%\Brisa` manualmente.
 
-Para respaldar, cierra Brisa y copia **toda** la carpeta `Data` a un lugar privado. Para restaurar, con Brisa cerrada, guarda una copia de los datos existentes y reemplaza `Data` por el respaldo completo. Contiene claves y autorizaciones: no la compartas ni la subas a GitHub. El instalador no incluye datos personales.
+Para respaldar, cierra Brisa y copia **toda** la carpeta `Data` y **cada carpeta personalizada donde hayas guardado archivos** a un lugar privado. Cambiar de destino no mueve los archivos anteriores, por lo que puede haber varias carpetas que respaldar. Para restaurar, con Brisa cerrada, conserva primero una copia de los datos existentes, repón `Data` y coloca las carpetas externas en sus rutas originales. El respaldo contiene claves y autorizaciones: no lo compartas ni lo subas a GitHub. El instalador no incluye datos personales.
 
 ### Pasar de la versión del repositorio al ejecutable
 
@@ -55,6 +59,8 @@ npm.cmd run migrate -- --from "C:\ruta\Brisa\.brisa"
 ```
 
 La migración copia a `%LOCALAPPDATA%\Brisa\Data`, conserva el origen y se niega a sobrescribir un destino existente. Cierra todos los servidores antes de migrar. Si ya abriste la app nueva, ciérrala y guarda su carpeta `Data` con otro nombre; no se combinan bibliotecas. La migración conserva nombre local, certificado y vinculaciones.
+
+Las carpetas personalizadas externas a `.brisa` conservan su ruta y no se duplican con la migración: mantenlas disponibles y respáldalas por separado.
 
 ## Compilar y verificar
 
@@ -68,7 +74,7 @@ npm.cmd test
 npm.cmd run test:e2e
 npm.cmd run dist:win
 npm.cmd run test:package
-node scripts/verify-package.mjs dist/Brisa-Portable-1.1.0-x64.exe
+node scripts/verify-package.mjs dist/Brisa-Portable-1.2.0-x64.exe
 ```
 
 Las pruebas de navegador usan Microsoft Edge. Los ejecutables y `SHA256SUMS.txt` aparecen en `dist`. `npm run desktop` abre el escritorio desde el código; `npm start` conserva el modo de navegador. Comparten puertos: cierra uno antes de abrir el otro.
@@ -84,7 +90,7 @@ La prueba del paquete usa datos y puertos temporales; comprueba interfaz, aislam
 - Prueba instalación, reapertura, bandeja, descarga, **Abrir carpeta** y actualización conservando datos.
 - Prueba en un iPhone real el envío y guardado de foto, PDF, ZIP y vídeo grande desde el icono de inicio. Cancela la hoja de compartir, interrumpe la red y comprueba la recuperación.
 - Revisa que los paquetes excluyan `.brisa`, perfiles, claves, datos de pruebas y dependencias de desarrollo.
-- Crea una release en GitHub con notas, los dos `.exe` de cada arquitectura validada y `SHA256SUMS.txt`. Comprueba un archivo con `Get-FileHash .\Brisa-Setup-1.1.0-x64.exe -Algorithm SHA256`.
+- Crea una release en GitHub con notas, los dos `.exe` de cada arquitectura validada y `SHA256SUMS.txt`. Comprueba un archivo con `Get-FileHash .\Brisa-Setup-1.2.0-x64.exe -Algorithm SHA256`.
 
 ## Seguridad y soporte
 

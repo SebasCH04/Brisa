@@ -13,6 +13,7 @@ import { certificates } from './lib/tls.mjs';
 import { Transfers, CHUNK_SIZE } from './lib/transfers.mjs';
 import { openWindowsFolder } from './lib/windows-shell.mjs';
 import { Activity } from './lib/activity.mjs';
+import { Library } from './lib/library.mjs';
 
 export const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
@@ -35,9 +36,10 @@ async function body(request, limit = 16384) {
   catch { throw error('La solicitud no contiene datos válidos.'); }
 }
 const publicFile = file => {
-  const { owner, ...visible } = file;
+  const { owner, directory, ...visible } = file;
   return { ...visible, source: owner === 'desktop' ? 'windows' : 'iphone' };
 };
+const publicUpload = ({ directory, ...upload }) => upload;
 export function networkAddresses() {
   const interfaces = Object.entries(os.networkInterfaces());
   interfaces.sort(([a], [b]) => Number(/virtual|vpn|wsl|vethernet|docker/i.test(a)) - Number(/virtual|vpn|wsl|vethernet|docker/i.test(b)));
@@ -50,6 +52,7 @@ export async function createBrisa(options = {}) {
   const addresses = options.addresses || networkAddresses();
   const tls = await certificates(dataDir, hostname, addresses);
   const transfers = new Transfers(storage);
+  const library = new Library(storage, transfers, options);
   const activity = new Activity(transfers, storage);
   const pending = new Map();
   const attempts = new Map();
@@ -119,7 +122,7 @@ export async function createBrisa(options = {}) {
             appUrl: `https://${hostname}:${info.httpsPort}`,
             devices: storage.state.devices.map(({ tokenHash: ignored, ...device }) => ({ ...device, online: Date.now() - (presence.get(device.id) || 0) < 20000 })),
             pending: [...pending.values()].map(({ tokenHash: ignored, ...item }) => item),
-            storagePath: path.join(dataDir, 'files'), projectPath: ROOT
+            storagePath: storage.filesDirectory, projectPath: ROOT
           });
           return json(response, result);
         }
@@ -150,6 +153,27 @@ export async function createBrisa(options = {}) {
           return json(response, { approved: false, pending: Boolean(item) });
         }
         if (!actor) throw error('Vincula primero este dispositivo desde tu computadora.', 401);
+        if (pathname === '/api/settings' && request.method === 'GET') {
+          if (!actor.admin) throw error('Gestiona estos ajustes desde Windows.', 403);
+          return json(response, { storage: await library.summary(), startup: options.startup ? await options.startup.get() : { supported: false, enabled: false } });
+        }
+        if (['/api/settings/folder', '/api/settings/folder/reset'].includes(pathname) && request.method === 'POST') {
+          if (!actor.admin) throw error('Solo puedes hacer esto desde Windows.', 403);
+          return json(response, await library.choose(pathname.endsWith('/reset')));
+        }
+        if (pathname === '/api/settings/startup' && request.method === 'PUT') {
+          if (!actor.admin) throw error('Solo puedes hacer esto desde Windows.', 403);
+          const input = await body(request);
+          if (typeof input.enabled !== 'boolean') throw error('El ajuste debe estar activado o desactivado.');
+          if (!options.startup?.set) throw error('Esta opción está disponible en el ejecutable de Windows.', 409);
+          return json(response, await options.startup.set(input.enabled));
+        }
+        const deleteMatch = pathname.match(/^\/api\/files\/([a-f0-9-]{36})$/);
+        if (deleteMatch && request.method === 'DELETE') {
+          if (!actor.admin) throw error('Solo puedes eliminar archivos desde Windows.', 403);
+          const result = await library.remove(deleteMatch[1]); activity.broadcast();
+          return json(response, result);
+        }
         if (['/api/events', '/api/activity'].includes(pathname) && request.method === 'GET') {
           const lastId = typeof request.headers['last-event-id'] === 'string' ? request.headers['last-event-id'] : '';
           const [lastInstance, lastCursor] = lastId.split(':');
@@ -200,7 +224,7 @@ export async function createBrisa(options = {}) {
           const input = await body(request);
           const file = input.id ? storage.state.files.find(item => item.id === input.id) : null;
           if (input.id && !file) throw error('No encontramos ese archivo.', 404);
-          const folder = file ? path.dirname(transfers.file(file.id)) : path.join(dataDir, 'files');
+          const folder = file ? path.dirname(transfers.file(file.id)) : storage.filesDirectory;
           if (!(await fsp.stat(folder)).isDirectory()) throw error('La carpeta ya no está disponible.', 404);
           try { await (options.openFolder || openWindowsFolder)(folder); }
           catch (caught) {
@@ -209,17 +233,17 @@ export async function createBrisa(options = {}) {
           }
           return json(response, { ok: true });
         }
-        if (pathname === '/api/uploads' && request.method === 'GET') return json(response, { uploads: [...transfers.uploads.values()].filter(item => item.owner === actor.id).map(({ owner, ...item }) => item) });
+        if (pathname === '/api/uploads' && request.method === 'GET') return json(response, { uploads: [...transfers.uploads.values()].filter(item => item.owner === actor.id).map(({ owner, directory, ...item }) => item) });
         if (pathname === '/api/uploads' && request.method === 'POST') {
           const upload = transfers.create(await body(request), actor.id);
           activity.touched.set(upload.id, Date.now());
           activity.record('upload-started', upload, actor);
-          return json(response, upload, 201);
+          return json(response, publicUpload(upload), 201);
         }
         const uploadMatch = pathname.match(/^\/api\/uploads\/([a-f0-9-]{36})(?:\/(chunk|complete))?$/);
         if (uploadMatch) {
           const [, id, action] = uploadMatch;
-          if (request.method === 'GET' && !action) return json(response, transfers.get(id, actor.id));
+          if (request.method === 'GET' && !action) return json(response, publicUpload(transfers.get(id, actor.id)));
           if (request.method === 'DELETE' && !action) {
             const upload = transfers.get(id, actor.id);
             transfers.cancel(id, actor.id); activity.touched.delete(id);
@@ -244,6 +268,8 @@ export async function createBrisa(options = {}) {
         if (fileMatch && ['GET', 'HEAD'].includes(request.method)) {
           const file = storage.state.files.find(item => item.id === fileMatch[1]);
           if (!file) throw error('No encontramos ese archivo.', 404);
+          const release = library.lock(file.id);
+          response.once('finish', release); response.once('close', release);
           await fsp.access(transfers.file(file.id));
           let start = 0, end = file.size - 1, partial = false;
           const range = request.headers.range;
@@ -349,7 +375,7 @@ export async function createBrisa(options = {}) {
       server.closeIdleConnections();
     })));
   }
-  return { info, storage, transfers, activity, ca: tls.ca, close, localServer, secureServer };
+  return { info, storage, transfers, library, activity, ca: tls.ca, close, localServer, secureServer };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   createBrisa().then(app => {

@@ -73,6 +73,86 @@ test('vinculación persistente, cookie de pantalla de inicio, revocación y cont
   assert.equal((await request(f.app, '/api/bootstrap', { headers: { Host: `evil.example:${f.app.info.httpPort}` } })).status, 403);
   assert.equal((await request(f.app, '/api/bootstrap', { headers: { 'X-Brisa-Client': '' } })).status, 403);
 });
+
+test('ajustes: carpeta para nuevos archivos, pendientes y biblioteca anterior sobreviven a cambios y reinicios', async t => {
+  const destination = await fs.mkdtemp(path.join(os.tmpdir(), 'brisa-destination-test-'));
+  t.after(async () => { assert.equal(path.dirname(destination), path.resolve(os.tmpdir())); assert.ok(path.basename(destination).startsWith('brisa-destination-test-')); await fs.rm(destination, { recursive: true, force: true }); });
+  let selected = destination; let enabled = false; const opened = [];
+  const f = await fixture(t, { chooseDirectory: async () => selected, openFolder: async folder => opened.push(folder), startup: { get: () => ({ supported: true, enabled }), set: value => ({ supported: true, enabled: enabled = value }) } });
+  const device = await pair(f.app);
+  const create = async name => (await request(f.app, '/api/uploads', { method: 'POST', data: { name, size: 0 } })).json;
+  const old = await create('anterior.txt');
+  await request(f.app, `/api/uploads/${old.id}/complete`, { method: 'POST' });
+  // A legacy entry has no stored directory. Upgrading must preserve its path.
+  delete f.app.storage.state.files[0].directory; f.app.storage.save();
+  const pending = await create('pendiente.txt');
+  assert.equal((await request(f.app, '/api/settings', { secure: true, token: device.token })).status, 403);
+  assert.equal((await request(f.app, '/api/settings/folder', { secure: true, token: device.token, method: 'POST' })).status, 403);
+  assert.equal((await request(f.app, '/api/settings/folder', { method: 'POST', headers: { Origin: 'https://evil.example' } })).status, 403);
+  assert.equal((await request(f.app, '/api/settings/folder', { method: 'POST' })).json.directory, destination);
+  assert.equal((await request(f.app, '/api/bootstrap')).json.storagePath, destination);
+  const current = await create('nuevo.txt'); assert.equal(current.directory, undefined);
+  await request(f.app, `/api/uploads/${current.id}/complete`, { method: 'POST' });
+  await request(f.app, `/api/uploads/${pending.id}/complete`, { method: 'POST' });
+  assert.equal(f.app.transfers.file(current.id), path.join(destination, current.id, 'nuevo.txt'));
+  assert.equal(f.app.transfers.file(pending.id), path.join(f.dataDir, 'files', pending.id, 'pendiente.txt'));
+  assert.equal((await request(f.app, '/api/files')).json.files.every(file => !('directory' in file)), true);
+  await f.restart();
+  assert.equal((await request(f.app, '/api/settings')).json.storage.directory, destination);
+  for (const id of [old.id, current.id, pending.id]) assert.equal((await request(f.app, `/api/files/${id}/download`, { secure: true, token: device.token })).status, 200);
+  await request(f.app, '/api/storage/reveal', { method: 'POST', data: {} }); assert.equal(opened.at(-1), destination);
+  selected = null;
+  assert.equal((await request(f.app, '/api/settings/folder', { method: 'POST' })).json.cancelled, true);
+  selected = path.join(f.dataDir, 'certificates');
+  assert.equal((await request(f.app, '/api/settings/folder', { method: 'POST' })).status, 400);
+  assert.equal((await request(f.app, '/api/settings/startup', { method: 'PUT', data: { enabled: true } })).json.enabled, true);
+  assert.equal((await request(f.app, '/api/settings/startup', { method: 'PUT', data: { enabled: 'true' } })).status, 400);
+  assert.equal((await request(f.app, '/api/settings/startup', { secure: true, token: device.token, method: 'PUT', data: { enabled: false } })).status, 403);
+  await request(f.app, '/api/settings/folder/reset', { method: 'POST' });
+  assert.equal((await request(f.app, '/api/settings')).json.storage.directory, path.join(f.dataDir, 'files'));
+  assert.equal((await request(f.app, `/api/files/${current.id}/download`)).status, 200);
+});
+
+test('almacenamiento: papelera, historial, control de acceso y bloqueo mientras un archivo está en uso', async t => {
+  const trashed = [];
+  const f = await fixture(t, { trashFile: async filename => { trashed.push(filename); await fs.rename(filename, `${filename}.trash-test`); } });
+  const device = await pair(f.app);
+  const payload = Buffer.from('contenido que debe conservar la papelera');
+  const upload = (await request(f.app, '/api/uploads', { method: 'POST', data: { name: 'papelera.txt', size: payload.length } })).json;
+  await request(f.app, `/api/uploads/${upload.id}/chunk?offset=0`, { method: 'PUT', data: payload, headers: { 'X-Content-SHA256': hash(payload) } });
+  await request(f.app, `/api/uploads/${upload.id}/complete`, { method: 'POST' });
+  const filename = f.app.transfers.file(upload.id);
+  await request(f.app, '/api/history', { method: 'DELETE' });
+  const settings = (await request(f.app, '/api/settings')).json;
+  assert.equal(settings.storage.usedBytes, payload.length); assert.equal(settings.storage.files.length, 1); assert.equal(settings.storage.deleteMode, 'trash');
+  assert.equal((await request(f.app, `/api/files/${upload.id}`, { secure: true, token: device.token, method: 'DELETE' })).status, 403);
+  const release = f.app.library.lock(upload.id);
+  assert.equal((await request(f.app, `/api/files/${upload.id}`, { method: 'DELETE' })).status, 409); assert.equal(trashed.length, 0);
+  release(); release();
+  assert.equal((await request(f.app, `/api/files/${upload.id}`, { method: 'DELETE' })).status, 200);
+  assert.deepEqual(trashed, [filename]); assert.deepEqual(await fs.readFile(`${filename}.trash-test`), payload);
+  assert.equal((await request(f.app, `/api/files/${upload.id}/download`)).status, 404);
+  assert.equal((await request(f.app, '/api/files')).json.files.length, 0);
+  assert.deepEqual(f.app.storage.state.historyHiddenIds, []);
+  await f.restart(); assert.equal((await request(f.app, '/api/settings')).json.storage.usedBytes, 0);
+});
+
+test('eliminar: un fallo de papelera o una ubicación enlazada nunca quita el registro ni toca archivos ajenos', async t => {
+  const f = await fixture(t, { trashFile: async () => { throw new Error('Recycle Bin unavailable'); } });
+  const file = (await request(f.app, '/api/uploads', { method: 'POST', data: { name: 'conservar.txt', size: 0 } })).json;
+  await request(f.app, `/api/uploads/${file.id}/complete`, { method: 'POST' });
+  assert.equal((await request(f.app, `/api/files/${file.id}`, { method: 'DELETE' })).status, 500);
+  assert.equal((await request(f.app, `/api/files/${file.id}/download`)).status, 200);
+  const filename = f.app.transfers.file(file.id); const folder = path.dirname(filename);
+  await fs.unlink(filename); await fs.rmdir(folder);
+  const outside = path.join(f.dataDir, 'certificates');
+  await fs.writeFile(path.join(outside, file.name), 'ajeno');
+  await fs.symlink(outside, folder, 'junction');
+  assert.equal((await request(f.app, `/api/files/${file.id}`, { method: 'DELETE' })).status, 409);
+  assert.equal(await fs.readFile(path.join(outside, file.name), 'utf8'), 'ajeno');
+  await fs.unlink(folder);
+  assert.equal((await request(f.app, `/api/files/${file.id}`, { method: 'DELETE' })).json.missing, true);
+});
 test('archivo multibloque: checksum, corte, reinicio, reanudación y descarga exacta con rangos', async t => {
   const f = await fixture(t);
   const device = await pair(f.app);

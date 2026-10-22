@@ -1,5 +1,13 @@
 # Cambios de Brisa
 
+## 1.2.0
+
+- Ajustes de Windows para elegir dónde guardar nuevos archivos, conservando la biblioteca anterior y las transferencias pendientes en su ubicación.
+- Inicio opcional con Windows en la bandeja, compatible con instalador y portátil; se conserva al reemplazar el portátil y respeta la desactivación desde Windows.
+- Almacenamiento con tamaño de archivos, envíos pendientes, espacio libre y eliminación confirmada. El ejecutable usa la papelera de Windows; el modo de navegador informa cuando el borrado es definitivo.
+- Protección de archivos en uso, acceso a la gestión solo desde Windows y comprobaciones de ubicación antes de borrar.
+- Transferencias a otra unidad con copia temporal y recuperación, además de documentación de respaldos para carpetas personalizadas.
+
 ## 1.1.0
 
 - Botón Ajustes disponible en Windows y iPhone, también antes de vincular.

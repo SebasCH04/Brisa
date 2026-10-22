@@ -26,7 +26,7 @@
         <button class="nav-item" data-view="devices"><span class="nav-icon" aria-hidden="true">▣</span>Mis dispositivos<span class="nav-count" id="deviceCount">0</span></button>
       </nav>
       <div class="sidebar-note"><span class="mini-leaf">≈</span><strong>De aquí para allá.</strong><p>Tus archivos se quedan entre tus dispositivos.</p><span class="small-pill">Sin nube · Sin suscripciones</span></div>
-      <div class="sidebar-bottom"><span class="status-dot"></span><span>Brisa <span id="version">1.1.0</span><small>Conexión local</small></span></div>
+      <div class="sidebar-bottom"><span class="status-dot"></span><span>Brisa <span id="version">1.2.0</span><small>Conexión local</small></span></div>
     </aside>
     <main>
       <header class="topbar"><span class="breadcrumb" id="breadcrumb">Mi espacio <span>/</span> Transferir</span><div class="topbar-actions"><div class="connection-pill" id="connectionPill"><span class="status-dot"></span><span id="connectionText">Conectando…</span></div><button type="button" class="settings-button" id="settingsButton" aria-haspopup="dialog" aria-controls="settingsDialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4 1-2h4l1 2 2 1 2-0 2 3-1 2v4l1 2-2 3h-2l-2 1-1 2h-4l-1-2-2-1H5l-2-3 1-2v-4L3 8l2-3h2z"/><circle cx="12" cy="12" r="3"/></svg><span>Ajustes</span></button></div></header>
@@ -58,9 +58,12 @@
   <dialog id="confirmDialog" class="confirm-dialog" aria-labelledby="confirmTitle" aria-describedby="confirmMessage"><form method="dialog"><div class="dialog-heading"><span class="eyebrow">BRISA</span><button class="icon-button" value="cancel" aria-label="Cerrar confirmación"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div><h2 id="confirmTitle"></h2><p id="confirmMessage"></p><div class="confirm-actions"><button class="secondary" value="cancel" autofocus>Cancelar</button><button class="primary" id="confirmAccept" value="confirm">Confirmar</button></div></form></dialog>
   <dialog id="settingsDialog" class="settings-dialog" aria-labelledby="settingsTitle" aria-describedby="settingsDescription">
     <form method="dialog">
+      <div class="settings-header">
       <div class="dialog-heading"><span class="eyebrow">A TU MANERA</span><button class="icon-button" value="close" aria-label="Cerrar ajustes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
       <h2 id="settingsTitle">Ajustes</h2>
       <p id="settingsDescription" class="settings-description">Haz de Brisa tu espacio.</p>
+      </div>
+      <div class="settings-content">
       <fieldset class="theme-options" aria-describedby="themeDescription">
         <legend>Apariencia</legend>
         <label class="theme-choice"><input type="radio" name="themePreference" value="light"><span class="theme-swatch preview-light" aria-hidden="true"></span><span>Claro</span></label>
@@ -69,6 +72,32 @@
       </fieldset>
       <p id="themeDescription" class="settings-description">Se aplica al instante y se guarda en este dispositivo. Sistema sigue el modo de Windows o del iPhone.</p>
       <p id="themeStorageWarning" class="notice warning" role="status" hidden>Este navegador no permite guardar la preferencia. Se aplicará mientras esta página siga abierta.</p>
+      <p id="phoneSettingsNote" class="settings-description settings-footnote" hidden>La carpeta de destino, el inicio automático y la gestión de archivos se configuran desde Brisa en Windows.</p>
+      <div id="desktopSettings" hidden>
+        <section class="settings-group" aria-labelledby="receiveTitle">
+          <h3 id="receiveTitle">Archivos recibidos</h3>
+          <p class="settings-description">Los nuevos archivos se guardarán aquí. Los anteriores conservan su ubicación.</p>
+          <p id="receiveDirectory" class="settings-path">Consultando carpeta…</p>
+          <div class="settings-actions"><button type="button" class="secondary" id="chooseDirectory">Elegir carpeta</button><button type="button" class="text-button" id="resetDirectory">Usar predeterminada</button></div>
+          <p id="folderPickerHint" class="settings-description" hidden>Abre el programa de Windows para elegir una carpeta.</p>
+        </section>
+        <section class="settings-group" aria-labelledby="startupTitle">
+          <label class="settings-toggle"><span id="startupTitle">Iniciar con Windows</span><input type="checkbox" id="startWithWindows" aria-describedby="startupDescription"></label>
+          <p id="startupDescription" class="settings-description">Brisa se abrirá en la bandeja al iniciar sesión, sin mostrar la ventana.</p>
+          <p id="startupHint" class="settings-description" hidden>Disponible en el ejecutable de Windows.</p>
+          <p id="portableStartupHint" class="settings-description" hidden>Si reemplazas o mueves el portátil, ábrelo una vez desde su nueva ubicación para actualizar el inicio automático.</p>
+        </section>
+        <section class="settings-group" aria-labelledby="storageTitle">
+          <div class="settings-section-heading"><h3 id="storageTitle">Almacenamiento</h3><button type="button" class="text-button" id="refreshStorage">Actualizar</button></div>
+          <p id="storageSummary" class="settings-description">Consultando archivos…</p>
+          <p id="storageFree" class="settings-description"></p>
+          <p id="deleteDescription" class="settings-description"></p>
+          <div id="storageFiles" class="storage-files" aria-label="Archivos guardados en Windows"></div>
+          <p id="storageEmpty" class="settings-description" hidden>No hay archivos guardados.</p>
+        </section>
+      </div>
+      <p id="settingsStatus" class="settings-feedback" role="status" hidden></p>
+      </div>
       <div class="confirm-actions"><button class="primary" value="close">Listo</button></div>
     </form>
   </dialog>

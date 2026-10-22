@@ -20,6 +20,7 @@ win:
     - nsis
     - portable
 nsis:
+  include: build/installer.nsh
   artifactName: Brisa-Setup-${version}-${arch}.${ext}
   oneClick: false
   perMachine: false

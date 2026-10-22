@@ -1,6 +1,6 @@
 import { ActivityUI, appConfirm } from './activity.js';
 import { DownloadsUI, isIOS } from './downloads.js';
-import './settings.js';
+import { configureSettings } from './settings.js';
 const $ = selector => document.querySelector(selector);
 const make = (tag, className, text) => {
   const element = document.createElement(tag);
@@ -64,6 +64,7 @@ function showView(view) {
 }
 function configure(info) {
   state = info;
+  configureSettings(info);
   $('#version').textContent = info.version;
   $('#connectionPill').classList.remove('offline');
   $('#connectionText').textContent = info.admin ? 'Tu espacio local' : info.authenticated ? 'Conectado con Windows' : 'Conexión cifrada';
@@ -416,6 +417,7 @@ async function resumeFromSelection(file) {
     task.offset = current.offset; task.pause = false; task.status = 'queued'; renderTasks(); pump();
   } catch (error) { task.file = null; task.status = 'selection'; toast(error.message, true); renderTasks(); }
 }
+addEventListener('brisa-library-changed', () => refresh());
 document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
 $('#chooseFiles').addEventListener('click', () => $('#fileInput').click());
 $('#clearHistory').addEventListener('click', async () => {

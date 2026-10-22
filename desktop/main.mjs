@@ -4,9 +4,11 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createBrisa } from '../server.mjs';
+import { createStartup } from './startup.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const smoke = process.argv.includes('--self-test');
+const background = process.argv.includes('--background');
 const reportPath = process.argv.find(arg => arg.startsWith('--self-test-report='))?.slice('--self-test-report='.length);
 const home = smoke ? fs.mkdtempSync(path.join(os.tmpdir(), 'brisa-desktop-test-')) : path.join(process.env.LOCALAPPDATA || app.getPath('appData'), 'Brisa');
 for (const name of ['Profile', 'Logs']) fs.mkdirSync(path.join(home, name), { recursive: true });
@@ -30,7 +32,15 @@ function fail(error) {
     : `No pudimos completar la operación.\n${error.message}\n\nRegistro: ${logFile}`);
 }
 async function start() {
+  const startup = createStartup(app, { smoke, settingsFile: path.join(home, 'Profile', 'startup.json') });
+  try { startup.reconcile(); } catch (error) { log(error); }
   runtime = await createBrisa({ dataDir: path.join(home, 'Data'), openFolder: smoke ? async folder => { openedFolders.push(folder); } : openFolder,
+    startup,
+    chooseDirectory: smoke ? async () => null : async current => {
+      const result = await dialog.showOpenDialog(window, { title: 'Carpeta para los nuevos archivos de Brisa', defaultPath: current, properties: ['openDirectory', 'createDirectory'] });
+      return result.canceled ? null : result.filePaths[0];
+    },
+    trashFile: smoke ? async filename => { await fs.promises.unlink(filename); } : filename => shell.trashItem(filename),
     onShutdown: () => app.quit(), ...(smoke ? { httpPort: 0, httpsPort: 0, bind: '127.0.0.1', addresses: ['127.0.0.1'], discovery: false } : {}) });
   origin = `http://127.0.0.1:${runtime.info.httpPort}`;
 }
@@ -54,7 +64,7 @@ async function restart() {
 
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
-  app.on('second-instance', show);
+  app.on('second-instance', (_event, argv) => { if (!argv.includes('--background')) show(); });
   app.on('activate', show);
   app.on('before-quit', event => {
     if (quitting) return;
@@ -89,7 +99,7 @@ else {
       tray.setToolTip('Brisa · lista para transferir');
       tray.setContextMenu(Menu.buildFromTemplate([
         { label: 'Abrir Brisa', click: show },
-        { label: 'Abrir archivos recibidos', click: () => openFolder(path.join(home, 'Data', 'files')).catch(fail) },
+        { label: 'Abrir archivos recibidos', click: () => openFolder(runtime.storage.filesDirectory).catch(fail) },
         { label: 'Reiniciar conexión', click: restart },
         { type: 'separator' },
         { label: `Brisa ${app.getVersion()}`, enabled: false },
@@ -97,7 +107,7 @@ else {
         { label: 'Salir de Brisa', click: () => app.quit() }
       ]));
       tray.on('double-click', show);
-      window.once('ready-to-show', show);
+      if (!background) window.once('ready-to-show', show);
     }
     await window.loadURL(origin);
     if (smoke) {

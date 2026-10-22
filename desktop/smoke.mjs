@@ -52,6 +52,11 @@ export async function runSmoke({ runtime, window, origin, reportPath, openedFold
   await nativeDownload;
   assert.deepEqual(fs.readFileSync(saved), bytes);
   assert.equal(window.webContents.getURL(), `${origin}/`);
+  const settings = await request('/api/settings');
+  assert.equal(settings.storage.files.length, 1); assert.equal(settings.storage.usedBytes, bytes.length);
+  assert.equal(settings.storage.canChooseDirectory, true); assert.equal(settings.storage.deleteMode, 'trash');
+  await request(`/api/files/${upload.id}`, 'DELETE');
+  assert.equal((await request('/api/settings')).storage.files.length, 0);
   if (reportPath) fs.writeFileSync(`${reportPath}.png`, (await window.webContents.capturePage()).toPNG());
-  return { checks: ['interfaz real', 'renderer aislado', 'certificado HTTPS validado', 'vinculación', 'envío y descarga con SHA-256', 'descarga nativa de Windows sin navegar', 'ruta de Abrir carpeta'] };
+  return { checks: ['interfaz real', 'renderer aislado', 'certificado HTTPS validado', 'vinculación', 'envío y descarga con SHA-256', 'descarga nativa de Windows sin navegar', 'ruta de Abrir carpeta', 'ajustes de almacenamiento y eliminación en datos temporales'] };
 }
