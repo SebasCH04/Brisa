@@ -5,7 +5,7 @@
 ## Instalar en Windows
 
 1. Descarga el instalador de [Releases](https://github.com/SebasCH04/Brisa/releases), cuando haya una versión publicada. Si aún no hay binarios, puedes compilarlos con los pasos de abajo.
-2. Abre **Brisa-Setup-1.0.0-x64.exe**. También puedes usar **Brisa-Portable-1.0.0-x64.exe** sin instalar. Los ejecutables no necesitan Node.js.
+2. Abre **Brisa-Setup-1.1.0-x64.exe**. También puedes usar **Brisa-Portable-1.1.0-x64.exe** sin instalar. Los ejecutables no necesitan Node.js.
 3. Abre Brisa y permite su acceso a tu **red privada** si Windows lo solicita.
 
 Requiere Windows 11; x64 corresponde a Intel/AMD. Los ejecutables no tienen firma comercial y Windows puede mostrar un aviso de editor desconocido. Comprueba su origen y SHA-256.
@@ -24,6 +24,7 @@ La vinculación se conserva sin renovaciones semanales. No necesitas Mac, App St
 - **Hacia el iPhone:** arrastra archivos a Brisa en Windows. En el teléfono pulsa **Descargar** y usa la hoja de iOS para guardarlos en Archivos o Fotos. Para archivos grandes puede aparecer **Guardar** al terminar de prepararlos.
 - **Hacia Windows:** pulsa **Enviar a Windows** en el teléfono. Los archivos se guardan automáticamente; **Abrir carpeta** los muestra en el Explorador.
 - **Esta sesión** muestra tu actividad actual; **Historial** conserva los registros. Borrar historial no elimina archivos.
+- **Ajustes → Apariencia** permite elegir Claro, Oscuro o Sistema. La elección se guarda en cada dispositivo; Sistema sigue su modo automáticamente.
 
 Mantén Windows encendido y la app del iPhone abierta durante la transferencia. La X de Windows deja Brisa en la bandeja: para detenerla elige **Salir de Brisa** desde su icono. Los datos se guardan en `%LOCALAPPDATA%\Brisa\Data` y se conservan al actualizar.
 

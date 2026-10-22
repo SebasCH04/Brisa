@@ -287,7 +287,7 @@ export async function createBrisa(options = {}) {
       }
       if (!['GET', 'HEAD'].includes(request.method)) throw error('Método no permitido.', 405);
       const asset = pathname === '/' ? 'index.html' : pathname === '/setup' ? 'setup.html' : pathname.slice(1);
-      const allowed = new Set(['index.html', 'setup.html', 'app.js', 'activity.js', 'downloads.js', 'setup.js', 'styles.css', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'sw.js']);
+      const allowed = new Set(['index.html', 'setup.html', 'app.js', 'activity.js', 'downloads.js', 'settings.js', 'theme.js', 'appearance.css', 'setup.js', 'styles.css', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'sw.js']);
       if (!allowed.has(asset)) throw error('No encontramos esa página.', 404);
       if (!request.socket.encrypted && !actor?.admin && asset === 'index.html') {
         response.writeHead(302, { Location: '/setup' }); return response.end();

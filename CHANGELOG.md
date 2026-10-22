@@ -1,5 +1,12 @@
 # Cambios de Brisa
 
+## 1.1.0
+
+- Botón Ajustes disponible en Windows y iPhone, también antes de vincular.
+- Apariencia clara, oscura o según el sistema, con cambio inmediato y preferencia guardada por dispositivo.
+- El modo Sistema sigue los cambios del equipo y las pestañas de la misma app sincronizan la elección.
+- Paleta oscura para transferencias, historial, dispositivos, configuración y cuadros de Brisa.
+
 ## 1.0.0
 
 - Instalador y ejecutable portátil de Windows, sin instalar Node.js, con ventana propia y bandeja del sistema.

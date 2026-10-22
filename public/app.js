@@ -1,5 +1,6 @@
 import { ActivityUI, appConfirm } from './activity.js';
 import { DownloadsUI, isIOS } from './downloads.js';
+import './settings.js';
 const $ = selector => document.querySelector(selector);
 const make = (tag, className, text) => {
   const element = document.createElement(tag);

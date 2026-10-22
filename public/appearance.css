@@ -1,0 +1,72 @@
+/* Settings work before pairing, and fit the same dialog on desktop and iPhone. */
+.settings-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);border-radius:9px;background:#f8faf4;color:var(--dark);padding:8px 11px;min-height:36px;font-size:11px;white-space:nowrap;flex-shrink:0}
+.settings-button:hover{background:#e9f0e3}
+.settings-button svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.settings-description{font-size:12px;line-height:1.8;color:var(--muted)}
+.theme-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;border:0;padding:0;margin:27px 0 15px;min-width:0}
+.theme-options legend{font-size:13px;font-weight:600;margin-bottom:13px;padding:0}
+.theme-choice{position:relative;display:flex;flex-direction:column;gap:11px;min-width:0;margin:0;border:1px solid var(--line);border-radius:11px;padding:30px 11px 13px;background:#fff;color:var(--dark);font-size:12px;cursor:pointer;text-align:center}
+.theme-choice:has(input:checked){border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green)}
+.theme-choice input[type=radio]{position:absolute;top:8px;right:8px;width:16px;height:16px;min-width:0;padding:0;margin:0;accent-color:var(--green)}
+.theme-swatch{position:relative;display:block;height:48px;border:1px solid #c3cebf;border-radius:6px;background:#f7f8f4;overflow:hidden}
+.theme-swatch::before{content:"";position:absolute;left:7px;top:7px;bottom:7px;width:12px;border-radius:3px;background:#dce8d8}
+.theme-swatch::after{content:"";position:absolute;left:26px;right:7px;top:12px;height:4px;border-radius:3px;background:#618271;box-shadow:0 10px 0 #c3cebf,0 20px 0 #c3cebf}
+.preview-dark{background:#111b18;border-color:#42584b}
+.preview-dark::before{background:#293e32}
+.preview-dark::after{background:#9fd7bc;box-shadow:0 10px 0 #42584b,0 20px 0 #42584b}
+.preview-system{background:linear-gradient(90deg,#f7f8f4 50%,#111b18 50%)}
+
+/* The palette is shared by every view, including file saving and confirmations. */
+:root[data-theme=dark]{color-scheme:dark;color:#e5ede8;background:#111b18;--green:#93cfb8;--dark:#e5ede8;--muted:#afbeb4;--line:#35453c;--pale:#24352b;--white:#1d2b24;--shadow:0 16px 55px #0004}
+:root[data-theme=dark] :is(.sidebar,.settings-button){background:#18261f}
+:root[data-theme=dark] :is(.workspace-label,.nav-item,.sidebar-note p,.sidebar-bottom,.sidebar-bottom small,.breadcrumb,.eyebrow,.bridge-line small,.dropzone>p,.drop-footer,.section-description,.empty-state strong,.empty-state p,.page-footer,.page-footer>span:first-child,.file-meta,.upload-detail,.device-card p,.install-tip p,.subtle,label,.quiet,.pair-pending p,dialog>p,.small-text,.setup-steps p,.fallback summary,.confirm-dialog form>p,.live-transfer p,.download-inline){color:#afbeb4}
+:root[data-theme=dark] .nav-item.active{background:#2b4033;color:#d6eedf}
+:root[data-theme=dark] :is(.nav-item:hover,.settings-button:hover){background:#25392d}
+:root[data-theme=dark] :is(.nav-count,.section-count){background:#314b39;color:#d6eedf}
+:root[data-theme=dark] :is(.small-pill,.sidebar-bottom){border-color:var(--line);color:#b5c6b9}
+:root[data-theme=dark] .connection-pill{background:#24372b;border-color:#3d5544;color:#c1dbba}
+:root[data-theme=dark] :is(.connection-pill.offline,.notice.warning){background:#3d3120;border-color:#695638;color:#edd29c}
+:root[data-theme=dark] .primary{background:#286957;color:#fff}
+:root[data-theme=dark] .primary:hover{background:#307d68}
+:root[data-theme=dark] .secondary{background:#25372a;border-color:#42573b;color:#d2e2c7}
+:root[data-theme=dark] .secondary:hover{background:#304633}
+:root[data-theme=dark] .device-orb svg{background:#25372c;box-shadow:0 0 0 7px #1a2921}
+:root[data-theme=dark] .phone-orb svg{background:#363427;stroke:#dbc88b;box-shadow:0 0 0 7px #24291f}
+:root[data-theme=dark] .bridge-line{border-color:#4c644d}
+:root[data-theme=dark] .bridge-line>span{background:#92b58a;border-color:#111b18}
+:root[data-theme=dark] .dropzone{background:linear-gradient(130deg,#1d3023,#1b2821);border-color:#526a47}
+:root[data-theme=dark] .dropzone.dragover{background:#2b4431;border-color:var(--green);box-shadow:inset 0 0 0 2px var(--green)}
+:root[data-theme=dark] .upload-icon{background:#2d432e;border-color:#45613c}
+:root[data-theme=dark] .upload-icon svg{stroke:#c0dca6}
+:root[data-theme=dark] :is(.text-button,.download-link,.folder-link,.address-link,.task-actions button){color:#b0d7b9}
+:root[data-theme=dark] .text-button:hover{color:#d2edce}
+:root[data-theme=dark] :is(.empty-state,.file-row,.upload-row,.device-card,.theme-choice){background:#1c2a22}
+:root[data-theme=dark] :is(.download-link,.folder-link){background:#2a3e2c;border-color:#45613c}
+:root[data-theme=dark] :is(.download-link:hover,.folder-link:hover){background:#344d35}
+:root[data-theme=dark] .file-type{background:#31402c;color:#d1ddbd}
+:root[data-theme=dark] .file-type.photo{background:#453d2b;color:#e5c892}
+:root[data-theme=dark] .file-type.video{background:#2a4239;color:#b4decd}
+:root[data-theme=dark] .upload-status{color:#bbd9a4}
+:root[data-theme=dark] :is(.upload-status.error,.download-inline.download-error){color:#efba96}
+:root[data-theme=dark] .task-actions .cancel-task{color:#d6bbaa}
+:root[data-theme=dark] :is(.upload-row progress,.live-transfer progress,.download-inline progress){background:#354b37}
+:root[data-theme=dark] :is(.upload-row progress,.live-transfer progress,.download-inline progress)::-webkit-progress-bar{background:#354b37}
+:root[data-theme=dark] :is(.upload-row progress,.live-transfer progress,.download-inline progress)::-webkit-progress-value{background:#a2c48b}
+:root[data-theme=dark] .upload-row progress::-moz-progress-bar{background:#a2c48b}
+:root[data-theme=dark] :is(.notice,.install-tip,.pair-pending,.live-transfer){background:#263727;border-color:#40563a;color:#cbdbbe}
+:root[data-theme=dark] .pending-card{background:#393321;border-color:#78683e}
+:root[data-theme=dark] .pending-card p{color:#d3c59d}
+:root[data-theme=dark] .verification-code{color:#f0dca1}
+:root[data-theme=dark] :is(input:not([type=file]),select){background:#15251b;border-color:#48613e;color:#e0ebda}
+:root[data-theme=dark] dialog{background:#1b2b21;border-color:#43583b;box-shadow:0 30px 100px #0008}
+:root[data-theme=dark] dialog::backdrop{background:#050d09a6}
+:root[data-theme=dark] .icon-button{background:#30432c;color:#d1e0be}
+:root[data-theme=dark] .setup-steps>li{border-color:#43583b}
+:root[data-theme=dark] .setup-steps>li:last-child{border-color:transparent}
+:root[data-theme=dark] .setup-steps>li::before{background:#33492c;border-color:#111b18;color:#d2e7b9}
+@media(max-width:700px){
+  .settings-button{min-height:38px;padding:8px 10px}
+  .settings-dialog{padding:23px 20px}
+  :root[data-theme=dark] .device-orb svg{box-shadow:0 0 0 5px #1a2921}
+  :root[data-theme=dark] .phone-orb svg{box-shadow:0 0 0 5px #24291f}
+}

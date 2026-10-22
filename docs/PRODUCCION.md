@@ -1,4 +1,4 @@
-# Distribución y mantenimiento de Brisa 1.0
+# Distribución y mantenimiento de Brisa 1.1
 
 ## Alcance y requisitos
 
@@ -12,7 +12,7 @@ Los certificados locales son gratuitos. Los ejecutables no tienen firma comercia
 
 ## Instalar y conectar
 
-Abre `Brisa-Setup-1.0.0-x64.exe` para instalar por usuario, sin permisos de administrador. Alternativamente, abre `Brisa-Portable-1.0.0-x64.exe`: no instala accesos directos, pero conserva los datos en el perfil de Windows, no junto al ejecutable. Usa una modalidad a la vez.
+Abre `Brisa-Setup-1.1.0-x64.exe` para instalar por usuario, sin permisos de administrador. Alternativamente, abre `Brisa-Portable-1.1.0-x64.exe`: no instala accesos directos, pero conserva los datos en el perfil de Windows, no junto al ejecutable. Usa una modalidad a la vez.
 
 Si el firewall pregunta, permite **Brisa en redes privadas**. Usa TCP 3210 para el panel local y la instalación del certificado, TCP 3211 para HTTPS y UDP 5353 para el nombre local mDNS. No abras puertos en el router ni expongas Brisa a Internet. Redes de invitados, VPN y aislamiento entre clientes pueden impedir la conexión. Si `.local` no resuelve, prueba la dirección alternativa que muestra el panel.
 
@@ -68,7 +68,7 @@ npm.cmd test
 npm.cmd run test:e2e
 npm.cmd run dist:win
 npm.cmd run test:package
-node scripts/verify-package.mjs dist/Brisa-Portable-1.0.0-x64.exe
+node scripts/verify-package.mjs dist/Brisa-Portable-1.1.0-x64.exe
 ```
 
 Las pruebas de navegador usan Microsoft Edge. Los ejecutables y `SHA256SUMS.txt` aparecen en `dist`. `npm run desktop` abre el escritorio desde el código; `npm start` conserva el modo de navegador. Comparten puertos: cierra uno antes de abrir el otro.
@@ -80,11 +80,11 @@ La prueba del paquete usa datos y puertos temporales; comprueba interfaz, aislam
 ## Lista de publicación
 
 - Actualiza la versión en `package.json` y la raíz de `package-lock.json`, además de `CHANGELOG.md`.
-- Ejecuta las pruebas anteriores y `npm audit --omit=dev`. Revisa también `npm audit`: al preparar 1.0.0 hay avisos moderados en las herramientas de compilación derivados de `sprintf-js`, que no se distribuye con la app. No fuerces una degradación del empaquetador sin probarla.
+- Ejecuta las pruebas anteriores y revisa `npm audit --omit=dev` y `npm audit` antes de publicar. Evalúa las actualizaciones de dependencias y vuelve a probar cualquier cambio del empaquetador.
 - Prueba instalación, reapertura, bandeja, descarga, **Abrir carpeta** y actualización conservando datos.
 - Prueba en un iPhone real el envío y guardado de foto, PDF, ZIP y vídeo grande desde el icono de inicio. Cancela la hoja de compartir, interrumpe la red y comprueba la recuperación.
 - Revisa que los paquetes excluyan `.brisa`, perfiles, claves, datos de pruebas y dependencias de desarrollo.
-- Crea una release en GitHub con notas, los dos `.exe` de cada arquitectura validada y `SHA256SUMS.txt`. Comprueba un archivo con `Get-FileHash .\Brisa-Setup-1.0.0-x64.exe -Algorithm SHA256`.
+- Crea una release en GitHub con notas, los dos `.exe` de cada arquitectura validada y `SHA256SUMS.txt`. Comprueba un archivo con `Get-FileHash .\Brisa-Setup-1.1.0-x64.exe -Algorithm SHA256`.
 
 ## Seguridad y soporte
 
