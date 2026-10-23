@@ -1,5 +1,12 @@
 # Cambios de Brisa
 
+## 1.2.1
+
+- Ajustes con cabecera reducida a título y cierre, sin los textos decorativos.
+- Fila de conexión y Ajustes compacta en el iPhone, con fondo continuo también en las áreas de rebote al desplazar la página.
+- Se evita enfocar la X al abrir Ajustes y se conserva un indicador de teclado acorde con el tema, sin aro amarillo.
+- Pruebas y verificación del ejecutable compatibles con rutas temporales abreviadas de Windows, como `RUNNER~1`, utilizadas por GitHub Actions.
+
 ## 1.2.0
 
 - Ajustes de Windows para elegir dónde guardar nuevos archivos, conservando la biblioteca anterior y las transferencias pendientes en su ubicación.

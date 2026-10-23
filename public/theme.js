@@ -3,6 +3,7 @@
   const key = 'brisa-theme';
   const valid = value => ['light', 'dark', 'system'].includes(value);
   const media = matchMedia('(prefers-color-scheme: dark)');
+  const mobile = matchMedia('(max-width: 700px)');
   let preference = 'system';
   let persistent = true;
   try { const value = localStorage.getItem(key); if (valid(value)) preference = value; }
@@ -11,7 +12,7 @@
     const theme = preference === 'system' ? (media.matches ? 'dark' : 'light') : preference;
     document.documentElement.dataset.theme = theme;
     const color = document.querySelector('meta[name="theme-color"]');
-    if (color) color.content = theme === 'dark' ? '#111b18' : '#21695b';
+    if (color) color.content = mobile.matches ? (theme === 'dark' ? '#18261f' : '#f1f4ec') : (theme === 'dark' ? '#111b18' : '#21695b');
     dispatchEvent(new CustomEvent('brisa-theme-change'));
   }
   window.BrisaTheme = Object.freeze({
@@ -26,6 +27,7 @@
     }
   });
   media.addEventListener('change', () => { if (preference === 'system') apply(); });
+  mobile.addEventListener('change', apply);
   addEventListener('storage', event => {
     if (event.key !== key && event.key !== null) return;
     preference = valid(event.newValue) ? event.newValue : 'system';

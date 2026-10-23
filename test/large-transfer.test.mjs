@@ -8,12 +8,14 @@ import http from 'node:http';
 import { createBrisa } from '../server.mjs';
 import { CHUNK_SIZE } from '../lib/transfers.mjs';
 
+const temporaryRoot = await fs.realpath(os.tmpdir());
+
 test('128 MiB: envío por bloques y descarga en streaming sin acumular el archivo completo', async t => {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'brisa-large-'));
+  const directory = await fs.mkdtemp(path.join(temporaryRoot, 'brisa-large-'));
   const app = await createBrisa({ dataDir: directory, httpPort: 0, httpsPort: 0, bind: '127.0.0.1', discovery: false, addresses: ['127.0.0.1'] });
   t.after(async () => {
     await app.close();
-    assert.equal(path.dirname(path.resolve(directory)), path.resolve(os.tmpdir()));
+    assert.equal(path.dirname(path.resolve(directory)), temporaryRoot);
     assert.ok(path.basename(directory).startsWith('brisa-large-'));
     await fs.rm(directory, { recursive: true, force: true });
   });

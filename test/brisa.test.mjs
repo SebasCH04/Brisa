@@ -9,6 +9,8 @@ import crypto from 'node:crypto';
 import { createBrisa } from '../server.mjs';
 import { CHUNK_SIZE } from '../lib/transfers.mjs';
 
+const temporaryRoot = await fs.realpath(os.tmpdir());
+
 const hash = buffer => crypto.createHash('sha256').update(buffer).digest('hex');
 function request(app, route, { secure = false, token, method = 'GET', data, headers = {} } = {}) {
   return new Promise((resolve, reject) => {
@@ -41,11 +43,11 @@ async function pair(app, name = 'iPhone de prueba') {
   return { token, id: proposal.json.id, cookie: status.headers['set-cookie'][0].split(';')[0] };
 }
 async function fixture(t, options = {}) {
-  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'brisa-test-'));
+  const dataDir = await fs.mkdtemp(path.join(temporaryRoot, 'brisa-test-'));
   let app = await createBrisa({ dataDir, httpPort: 0, httpsPort: 0, bind: '127.0.0.1', discovery: false, addresses: ['127.0.0.1'], ...options });
   t.after(async () => {
     await app.close();
-    assert.equal(path.dirname(path.resolve(dataDir)), path.resolve(os.tmpdir()));
+    assert.equal(path.dirname(path.resolve(dataDir)), temporaryRoot);
     assert.ok(path.basename(dataDir).startsWith('brisa-test-'));
     await fs.rm(dataDir, { recursive: true, force: true });
   });
@@ -75,8 +77,8 @@ test('vinculación persistente, cookie de pantalla de inicio, revocación y cont
 });
 
 test('ajustes: carpeta para nuevos archivos, pendientes y biblioteca anterior sobreviven a cambios y reinicios', async t => {
-  const destination = await fs.mkdtemp(path.join(os.tmpdir(), 'brisa-destination-test-'));
-  t.after(async () => { assert.equal(path.dirname(destination), path.resolve(os.tmpdir())); assert.ok(path.basename(destination).startsWith('brisa-destination-test-')); await fs.rm(destination, { recursive: true, force: true }); });
+  const destination = await fs.mkdtemp(path.join(temporaryRoot, 'brisa-destination-test-'));
+  t.after(async () => { assert.equal(path.dirname(destination), temporaryRoot); assert.ok(path.basename(destination).startsWith('brisa-destination-test-')); await fs.rm(destination, { recursive: true, force: true }); });
   let selected = destination; let enabled = false; const opened = [];
   const f = await fixture(t, { chooseDirectory: async () => selected, openFolder: async folder => opened.push(folder), startup: { get: () => ({ supported: true, enabled }), set: value => ({ supported: true, enabled: enabled = value }) } });
   const device = await pair(f.app);

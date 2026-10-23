@@ -1,4 +1,5 @@
 /* Settings work before pairing, and fit the same dialog on desktop and iPhone. */
+:root{--mobile-background:#f1f4ec}
 .settings-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);border-radius:9px;background:#f8faf4;color:var(--dark);padding:8px 11px;min-height:36px;font-size:11px;white-space:nowrap;flex-shrink:0}
 .settings-button:hover{background:#e9f0e3}
 .settings-button svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
@@ -6,6 +7,9 @@
 .settings-dialog{padding:0;overflow:hidden}
 .settings-dialog form{display:flex;flex-direction:column;max-height:min(calc(90dvh - 2px),calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 30px))}
 .settings-header{flex-shrink:0;padding:25px 27px 0}
+.settings-header h2{margin:0}
+.settings-header h2:focus{outline:none}
+.settings-header .icon-button:focus-visible{outline-color:var(--green)}
 .settings-content{overflow-y:auto;min-height:0;overscroll-behavior:contain;padding:0 27px 23px}
 .settings-dialog .confirm-actions{flex-shrink:0;margin:0;padding:15px 27px;border-top:1px solid var(--line)}
 .settings-group{border-top:1px solid var(--line);padding-top:21px;margin-top:23px;min-width:0}
@@ -43,7 +47,7 @@
 .preview-system{background:linear-gradient(90deg,#f7f8f4 50%,#111b18 50%)}
 
 /* The palette is shared by every view, including file saving and confirmations. */
-:root[data-theme=dark]{color-scheme:dark;color:#e5ede8;background:#111b18;--green:#93cfb8;--dark:#e5ede8;--muted:#afbeb4;--line:#35453c;--pale:#24352b;--white:#1d2b24;--shadow:0 16px 55px #0004}
+:root[data-theme=dark]{color-scheme:dark;color:#e5ede8;background:#111b18;--green:#93cfb8;--dark:#e5ede8;--muted:#afbeb4;--line:#35453c;--pale:#24352b;--white:#1d2b24;--shadow:0 16px 55px #0004;--mobile-background:#18261f}
 :root[data-theme=dark] :is(.sidebar,.settings-button){background:#18261f}
 :root[data-theme=dark] :is(.workspace-label,.nav-item,.sidebar-note p,.sidebar-bottom,.sidebar-bottom small,.breadcrumb,.eyebrow,.bridge-line small,.dropzone>p,.drop-footer,.section-description,.empty-state strong,.empty-state p,.page-footer,.page-footer>span:first-child,.file-meta,.upload-detail,.device-card p,.install-tip p,.subtle,label,.quiet,.pair-pending p,dialog>p,.small-text,.setup-steps p,.fallback summary,.confirm-dialog form>p,.live-transfer p,.download-inline){color:#afbeb4}
 :root[data-theme=dark] .nav-item.active{background:#2b4033;color:#d6eedf}
@@ -91,6 +95,13 @@
 :root[data-theme=dark] .setup-steps>li:last-child{border-color:transparent}
 :root[data-theme=dark] .setup-steps>li::before{background:#33492c;border-color:#111b18;color:#d2e7b9}
 @media(max-width:700px){
+  :root,:root[data-theme=dark]{background:var(--mobile-background)}
+  body,.shell,main,.sidebar,:root[data-theme=dark] .sidebar{background:var(--mobile-background)}
+  .topbar{flex-wrap:nowrap;min-height:56px;padding-top:9px;padding-bottom:9px}
+  .topbar .breadcrumb{display:none}
+  .topbar-actions{width:100%;justify-content:space-between;flex-wrap:nowrap;gap:10px}
+  .topbar .connection-pill{min-width:0;white-space:nowrap}
+  .topbar .connection-pill span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .settings-button{min-height:38px;padding:8px 10px}
   .settings-dialog{padding:0}
   .settings-header{padding:22px 20px 0}

@@ -5,9 +5,11 @@ import path from 'node:path';
 import os from 'node:os';
 import { migrateData } from '../lib/migrate.mjs';
 
+const temporaryRoot = fs.realpathSync(os.tmpdir());
+
 test('migrar conserva identidad, certificados y bytes sin modificar el origen ni sobrescribir datos', t => {
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'brisa-migration-test-'));
-  t.after(() => { assert.equal(path.dirname(temporary), fs.realpathSync(os.tmpdir())); fs.rmSync(temporary, { recursive: true, force: true }); });
+  const temporary = fs.mkdtempSync(path.join(temporaryRoot, 'brisa-migration-test-'));
+  t.after(() => { assert.equal(path.dirname(temporary), temporaryRoot); fs.rmSync(temporary, { recursive: true, force: true }); });
   const source = path.join(temporary, 'source'); const destination = path.join(temporary, 'Data');
   fs.mkdirSync(path.join(source, 'certificates'), { recursive: true });
   fs.mkdirSync(path.join(source, 'files', 'example'), { recursive: true });
@@ -29,8 +31,8 @@ test('migrar conserva identidad, certificados y bytes sin modificar el origen ni
 });
 
 test('migración actualiza el destino predeterminado y conserva referencias a carpetas externas', t => {
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'brisa-migration-test-'));
-  t.after(() => { assert.equal(path.dirname(temporary), fs.realpathSync(os.tmpdir())); fs.rmSync(temporary, { recursive: true, force: true }); });
+  const temporary = fs.mkdtempSync(path.join(temporaryRoot, 'brisa-migration-test-'));
+  t.after(() => { assert.equal(path.dirname(temporary), temporaryRoot); fs.rmSync(temporary, { recursive: true, force: true }); });
   const source = path.join(temporary, 'source'); const destination = path.join(temporary, 'Data');
   const external = path.join(temporary, 'external');
   fs.mkdirSync(path.join(source, 'files'), { recursive: true }); fs.mkdirSync(path.join(source, 'uploads'));

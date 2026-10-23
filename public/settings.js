@@ -90,6 +90,7 @@ export function configureSettings(info) {
 }
 $('#settingsButton').addEventListener('click', () => {
   updateTheme(); feedback(); dialog.showModal();
+  $('#settingsTitle').focus({ preventScroll: true });
   if (admin) action(load);
 });
 $('#chooseDirectory').addEventListener('click', () => action(async () => {

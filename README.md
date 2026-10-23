@@ -5,7 +5,7 @@
 ## Instalar en Windows
 
 1. Descarga el instalador de [Releases](https://github.com/SebasCH04/Brisa/releases), cuando haya una versión publicada. Si aún no hay binarios, puedes compilarlos con los pasos de abajo.
-2. Abre **Brisa-Setup-1.2.0-x64.exe**. También puedes usar **Brisa-Portable-1.2.0-x64.exe** sin instalar. Los ejecutables no necesitan Node.js.
+2. Abre **Brisa-Setup-1.2.1-x64.exe**. También puedes usar **Brisa-Portable-1.2.1-x64.exe** sin instalar. Los ejecutables no necesitan Node.js.
 3. Abre Brisa y permite su acceso a tu **red privada** si Windows lo solicita.
 
 Requiere Windows 11; x64 corresponde a Intel/AMD. Los ejecutables no tienen firma comercial y Windows puede mostrar un aviso de editor desconocido. Comprueba su origen y SHA-256.

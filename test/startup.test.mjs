@@ -5,6 +5,8 @@ import path from 'node:path';
 import os from 'node:os';
 import { createStartup } from '../desktop/startup.mjs';
 
+const temporaryRoot = fs.realpathSync(os.tmpdir());
+
 test('inicio con Windows: ruta estable con espacios, segundo plano y activación solo bajo petición', () => {
   const calls = []; let enabled = false;
   const app = { isPackaged: true, getLoginItemSettings: options => { calls.push(['get', options]); return { openAtLogin: enabled, executableWillLaunchAtLogin: enabled }; }, setLoginItemSettings: options => { calls.push(['set', options]); enabled = options.openAtLogin; } };
@@ -19,8 +21,8 @@ test('inicio con Windows: ruta estable con espacios, segundo plano y activación
 });
 
 test('actualizar el portátil conserva la autorización y respeta el inicio desactivado desde Windows', t => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'brisa-startup-test-'));
-  t.after(() => { assert.equal(path.dirname(directory), path.resolve(os.tmpdir())); assert.ok(path.basename(directory).startsWith('brisa-startup-test-')); fs.rmSync(directory, { recursive: true, force: true }); });
+  const directory = fs.mkdtempSync(path.join(temporaryRoot, 'brisa-startup-test-'));
+  t.after(() => { assert.equal(path.dirname(directory), temporaryRoot); assert.ok(path.basename(directory).startsWith('brisa-startup-test-')); fs.rmSync(directory, { recursive: true, force: true }); });
   const settingsFile = path.join(directory, 'startup.json');
   const old = path.join(directory, 'Brisa antigua.exe'); const current = path.join(directory, 'Brisa nueva.exe');
   fs.writeFileSync(settingsFile, JSON.stringify({ executable: old }));

@@ -10,7 +10,7 @@ const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const smoke = process.argv.includes('--self-test');
 const background = process.argv.includes('--background');
 const reportPath = process.argv.find(arg => arg.startsWith('--self-test-report='))?.slice('--self-test-report='.length);
-const home = smoke ? fs.mkdtempSync(path.join(os.tmpdir(), 'brisa-desktop-test-')) : path.join(process.env.LOCALAPPDATA || app.getPath('appData'), 'Brisa');
+const home = smoke ? fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'brisa-desktop-test-')) : path.join(process.env.LOCALAPPDATA || app.getPath('appData'), 'Brisa');
 for (const name of ['Profile', 'Logs']) fs.mkdirSync(path.join(home, name), { recursive: true });
 app.setPath('userData', path.join(home, 'Profile'));
 app.setAppUserModelId('com.sebasch04.brisa');

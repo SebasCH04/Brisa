@@ -4,9 +4,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { createBrisa } from '../server.mjs';
 
+const temporaryRoot = await fs.realpath(os.tmpdir());
+
 let app, directory, selected, enabled = false, failTrash = false;
 test.beforeAll(async () => {
-  directory = await fs.mkdtemp(path.join(os.tmpdir(), 'brisa-storage-ui-'));
+  directory = await fs.mkdtemp(path.join(temporaryRoot, 'brisa-storage-ui-'));
   selected = path.join(directory, 'Recibidos con espacios'); await fs.mkdir(selected);
   app = await createBrisa({ dataDir: path.join(directory, 'Data'), httpPort: 0, httpsPort: 0, bind: '127.0.0.1', discovery: false, addresses: ['127.0.0.1'],
     chooseDirectory: async () => selected,
@@ -17,7 +19,7 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   await app?.close();
   if (directory) {
-    expect(path.dirname(directory)).toBe(path.resolve(os.tmpdir())); expect(path.basename(directory).startsWith('brisa-storage-ui-')).toBe(true);
+    expect(path.dirname(directory)).toBe(temporaryRoot); expect(path.basename(directory).startsWith('brisa-storage-ui-')).toBe(true);
     await fs.rm(directory, { recursive: true, force: true });
   }
 });

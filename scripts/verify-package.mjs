@@ -16,6 +16,7 @@ await new Promise((resolve, reject) => {
 const result = JSON.parse(await fs.readFile(report, 'utf8'));
 if (!result.ok || !result.packaged) throw new Error(`Prueba incompleta: ${report}`);
 console.log(JSON.stringify(result, null, 2));
-const temporary = path.resolve(result.temporaryDirectory);
-if (path.dirname(temporary) !== path.resolve(os.tmpdir()) || !path.basename(temporary).startsWith('brisa-desktop-test-')) throw new Error('Ruta temporal no válida.');
+const temporary = await fs.realpath(result.temporaryDirectory);
+const temporaryRoot = await fs.realpath(os.tmpdir());
+if (path.dirname(temporary) !== temporaryRoot || !path.basename(temporary).startsWith('brisa-desktop-test-')) throw new Error('Ruta temporal no válida.');
 await fs.rm(temporary, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });

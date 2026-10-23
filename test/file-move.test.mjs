@@ -6,9 +6,11 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { moveFile } from '../lib/file-move.mjs';
 
+const temporaryRoot = await fs.realpath(os.tmpdir());
+
 test('otra unidad: conserva bytes, recupera una copia parcial y mantiene el original si falla el destino', async t => {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'brisa-move-test-'));
-  t.after(async () => { assert.equal(path.dirname(directory), path.resolve(os.tmpdir())); assert.ok(path.basename(directory).startsWith('brisa-move-test-')); await fs.rm(directory, { recursive: true, force: true }); });
+  const directory = await fs.mkdtemp(path.join(temporaryRoot, 'brisa-move-test-'));
+  t.after(async () => { assert.equal(path.dirname(directory), temporaryRoot); assert.ok(path.basename(directory).startsWith('brisa-move-test-')); await fs.rm(directory, { recursive: true, force: true }); });
   const source = path.join(directory, 'source'); const destination = path.join(directory, 'target');
   const payload = crypto.randomBytes(1024 * 1024 + 7);
   await fs.writeFile(source, payload); await fs.writeFile(`${destination}.brisa-copy`, 'copia cortada');

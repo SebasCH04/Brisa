@@ -5,6 +5,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { createBrisa } from '../server.mjs';
 
+const temporaryRoot = await fs.realpath(os.tmpdir());
+
 let app, dataDir;
 const openedFolders = [];
 async function expectInsideViewport(page) {
@@ -19,13 +21,13 @@ async function expectInsideViewport(page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 }
 test.beforeAll(async () => {
-  dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'brisa-ui-'));
+  dataDir = await fs.mkdtemp(path.join(temporaryRoot, 'brisa-ui-'));
   app = await createBrisa({ dataDir, httpPort: 0, httpsPort: 0, bind: '127.0.0.1', discovery: false, addresses: ['127.0.0.1'], openFolder: async folder => { openedFolders.push(folder); } });
 });
 test.afterAll(async () => {
   await app?.close();
   if (dataDir) {
-    expect(path.dirname(path.resolve(dataDir))).toBe(path.resolve(os.tmpdir()));
+    expect(path.dirname(path.resolve(dataDir))).toBe(temporaryRoot);
     expect(path.basename(dataDir).startsWith('brisa-ui-')).toBe(true);
     await fs.rm(dataDir, { recursive: true, force: true });
   }
